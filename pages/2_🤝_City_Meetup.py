@@ -2,7 +2,11 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from utils.meetup_utils import load_city_data, run_search, haversine_distance
-
+st.logo(
+    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+    link="https://www.linkedin.com/in/mahantesh-hiremath/",
+    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
+)
 st.set_page_config(page_title="City Meetup Search", page_icon="🤝", layout="wide")
 
 st.title("Optimal Common Meetup Search")
@@ -151,31 +155,37 @@ if st.button("Find Optimal Meeting Point", type="primary"):
                 st.write(f"Search time: {result['time_taken']*1000:.1f} ms")
 
 # Adding a footer
-footer="""<style>
-a:link , a:visited{
-color: blue;
-background-color: transparent;
-text-decoration: underline;
-}
 
-a:hover,  a:active {
-color: red;
-background-color: transparent;
-text-decoration: underline;
-}
+st.markdown(
+    '''
+    <style>
+    .streamlit-expanderHeader {
+        background-color: blue;
+        color: white; # Adjust this for expander header color
+    }
+    .streamlit-expanderContent {
+        background-color: blue;
+        color: white; # Expander content color
+    }
+    </style>
+    ''',
+    unsafe_allow_html=True
+)
+
+footer="""<style>
 
 .footer {
 position: fixed;
 left: 0;
 bottom: 0;
 width: 100%;
-background-color: white;
-color: black;
+background-color: #2C1E5B;
+color: white;
 text-align: center;
 }
 </style>
 <div class="footer">
-<p>Developed with ❤️ by <a style='display: inline; text-align: center;' href="https://bit.ly/atozaboutdata" target="_blank">MAHANTESH HIREMATH</a></p>
+<p>Developed with ❤️ by <a style='display: inline; text-align: center;' href="https://www.linkedin.com/in/mahantesh-hiremath/" target="_blank">MAHANTESH HIREMATH</a></p>
 </div>
 """
 st.markdown(footer,unsafe_allow_html=True)
