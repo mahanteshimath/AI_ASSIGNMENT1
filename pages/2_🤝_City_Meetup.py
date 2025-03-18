@@ -127,7 +127,7 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             with col2:
                 st.metric("Nodes Generated", result['nodes_generated'])
             with col3:
-                st.metric("Search Time", f"{result['time_taken']*1000:.1f} ms")
+                st.metric("Search Time", f"{result['time_taken']*1000:.6f} ms")
             
             # Show path details in an expander
             with st.expander("View Detailed Path"):
