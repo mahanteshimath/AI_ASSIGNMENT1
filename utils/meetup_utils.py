@@ -2,13 +2,12 @@ import numpy as np
 import time
 import heapq
 from math import radians, cos, sin, asin, sqrt
+import geopandas as gpd
+import os
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """Calculate the great circle distance between two points in kilometers."""
-    # Convert decimal degrees to radians
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-    
-    # Haversine formula
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
@@ -17,31 +16,138 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     return c * r
 
 def load_city_data():
-    """Load city data with real Indian cities and their connections."""
-    cities = {
-        "Delhi": {"lat": 28.6139, "lon": 77.2090, "state": "Delhi"},
-        "Mumbai": {"lat": 19.0760, "lon": 72.8777, "state": "Maharashtra"},
-        "Bangalore": {"lat": 12.9716, "lon": 77.5946, "state": "Karnataka"},
-        "Chennai": {"lat": 13.0827, "lon": 80.2707, "state": "Tamil Nadu"},
-        "Kolkata": {"lat": 22.5726, "lon": 88.3639, "state": "West Bengal"},
-        "Hyderabad": {"lat": 17.3850, "lon": 78.4867, "state": "Telangana"},
-        "Ahmedabad": {"lat": 23.0225, "lon": 72.5714, "state": "Gujarat"},
-        "Jaipur": {"lat": 26.9124, "lon": 75.7873, "state": "Rajasthan"}
-    }
-    
-    # Define realistic city connections based on major routes
-    neighbors = {
-        "Delhi": ["Jaipur", "Ahmedabad"],
-        "Mumbai": ["Ahmedabad", "Bangalore", "Hyderabad"],
-        "Bangalore": ["Chennai", "Hyderabad", "Mumbai"],
-        "Chennai": ["Bangalore", "Hyderabad"],
-        "Kolkata": ["Hyderabad"],
-        "Hyderabad": ["Chennai", "Mumbai", "Kolkata", "Bangalore"],
-        "Ahmedabad": ["Mumbai", "Delhi", "Jaipur"],
-        "Jaipur": ["Delhi", "Ahmedabad"]
-    }
-    
-    return cities, neighbors
+    """Load city data from India taluka GeoJSON file."""
+    try:
+        # Define the absolute path to the data file
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_path = os.path.join(base_dir, "data", "india_taluk.geojson")
+        
+        # Check if file exists
+        if not os.path.exists(data_path):
+            print(f"Data file not found at: {data_path}")
+            raise FileNotFoundError("GeoJSON file not found")
+
+        # Load the GeoJSON file
+        gdf = gpd.read_file(data_path)
+        
+        # Project to a suitable CRS for India
+        # EPSG:32643 is UTM zone 43N which covers most of India
+        gdf = gdf.to_crs("EPSG:32643")
+        
+        # Calculate centroids (now in meters)
+        gdf['centroid'] = gdf.geometry.centroid
+        
+        # Project back to WGS84 (EPSG:4326) for lat/lon coordinates
+        gdf = gdf.to_crs("EPSG:4326")
+        # Recalculate centroids in WGS84
+        gdf['centroid'] = gdf['centroid'].to_crs("EPSG:4326")
+        
+        # Create cities dictionary
+        cities = {}
+        for idx, row in gdf.iterrows():
+            city_key = f"{row['NAME_3']}, {row['NAME_2']}"  # City, District
+            cities[city_key] = {
+                "lat": row.centroid.y,
+                "lon": row.centroid.x,
+                "state": row['NAME_1'],
+                "district": row['NAME_2'],
+                "city": row['NAME_3']
+            }
+        
+        # Build neighbors dictionary using projected geometries for accurate spatial operations
+        gdf_projected = gdf.to_crs("EPSG:32643")
+        neighbors = {}
+        for city1 in cities.keys():
+            neighbors[city1] = []
+            city1_geom = gdf_projected[
+                (gdf_projected['NAME_3'] == cities[city1]['city']) & 
+                (gdf_projected['NAME_2'] == cities[city1]['district'])
+            ].geometry.iloc[0]
+            
+            for city2 in cities.keys():
+                if city1 != city2:
+                    city2_geom = gdf_projected[
+                        (gdf_projected['NAME_3'] == cities[city2]['city']) & 
+                        (gdf_projected['NAME_2'] == cities[city2]['district'])
+                    ].geometry.iloc[0]
+                    
+                    # Use projected geometries for distance calculation (now in meters)
+                    if city1_geom.touches(city2_geom) or city1_geom.distance(city2_geom) < 100:  # 100 meters threshold
+                        neighbors[city1].append(city2)
+        
+        return cities, neighbors
+
+    except Exception as e:
+        print(f"Error loading city data: {e}")
+        # Fallback data with major Indian cities
+        cities = {
+            "Delhi": {
+                "lat": 28.6139, "lon": 77.2090,
+                "state": "Delhi", "district": "Central Delhi",
+                "city": "Delhi"
+            },
+            "Mumbai": {
+                "lat": 19.0760, "lon": 72.8777,
+                "state": "Maharashtra", "district": "Mumbai City",
+                "city": "Mumbai"
+            },
+            "Bangalore": {
+                "lat": 12.9716, "lon": 77.5946,
+                "state": "Karnataka", "district": "Bangalore Urban",
+                "city": "Bangalore"
+            },
+            "Chennai": {
+                "lat": 13.0827, "lon": 80.2707,
+                "state": "Tamil Nadu", "district": "Chennai",
+                "city": "Chennai"
+            },
+            "Kolkata": {
+                "lat": 22.5726, "lon": 88.3639,
+                "state": "West Bengal", "district": "Kolkata",
+                "city": "Kolkata"
+            },
+            "Hyderabad": {
+                "lat": 17.3850, "lon": 78.4867,
+                "state": "Telangana", "district": "Hyderabad",
+                "city": "Hyderabad"
+            },
+            "Ahmedabad": {
+                "lat": 23.0225, "lon": 72.5714,
+                "state": "Gujarat", "district": "Ahmedabad",
+                "city": "Ahmedabad"
+            },
+            "Pune": {
+                "lat": 18.5204, "lon": 73.8567,
+                "state": "Maharashtra", "district": "Pune",
+                "city": "Pune"
+            },
+            "Jaipur": {
+                "lat": 26.9124, "lon": 75.7873,
+                "state": "Rajasthan", "district": "Jaipur",
+                "city": "Jaipur"
+            },
+            "Lucknow": {
+                "lat": 26.8467, "lon": 80.9462,
+                "state": "Uttar Pradesh", "district": "Lucknow",
+                "city": "Lucknow"
+            }
+        }
+
+        # Define realistic connections between major cities
+        neighbors = {
+            "Delhi": ["Jaipur", "Lucknow"],
+            "Mumbai": ["Pune", "Ahmedabad"],
+            "Bangalore": ["Chennai", "Hyderabad"],
+            "Chennai": ["Bangalore", "Hyderabad"],
+            "Kolkata": ["Hyderabad"],
+            "Hyderabad": ["Chennai", "Mumbai", "Bangalore"],
+            "Ahmedabad": ["Mumbai", "Jaipur"],
+            "Pune": ["Mumbai", "Hyderabad"],
+            "Jaipur": ["Delhi", "Ahmedabad"],
+            "Lucknow": ["Delhi", "Kolkata"]
+        }
+        
+        return cities, neighbors
 
 def run_search(city1, city2, algorithm="A*", heuristic_type="Straight-line", cities=None, neighbors=None):
     """Run the specified search algorithm to find optimal meeting point."""
