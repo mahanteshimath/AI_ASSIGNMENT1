@@ -2,7 +2,7 @@ import numpy as np
 import time
 import heapq
 from math import radians, cos, sin, asin, sqrt
-import geopandas as gpd
+import pandas as pd
 import os
 
 def haversine_distance(lat1, lon1, lat2, lon2):
@@ -16,46 +16,93 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     return c * r
 
 def load_city_data():
-    """Load city data with major Indian cities and their direct connections."""
-    # Simplified city data with major cities and realistic connections
-    cities = {
-        "Delhi": {
-            "lat": 28.6139, "lon": 77.2090,
-            "state": "Delhi", "district": "Central Delhi",
-            "city": "Delhi"
-        },
-        "Mumbai": {
-            "lat": 19.0760, "lon": 72.8777,
-            "state": "Maharashtra", "district": "Mumbai City",
-            "city": "Mumbai"
-        },
-        "Bangalore": {
-            "lat": 12.9716, "lon": 77.5946,
-            "state": "Karnataka", "district": "Bangalore Urban",
-            "city": "Bangalore"
-        },
-        "Chennai": {
-            "lat": 13.0827, "lon": 80.2707,
-            "state": "Tamil Nadu", "district": "Chennai",
-            "city": "Chennai"
-        },
-        "Hyderabad": {
-            "lat": 17.3850, "lon": 78.4867,
-            "state": "Telangana", "district": "Hyderabad",
-            "city": "Hyderabad"
+    """Load city data from CSV file containing Indian cities."""
+    try:
+        # Get absolute path to the data file
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_path = os.path.join(base_dir, "data", "india_states_districts_cities_coordinates.csv")
+        
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"CSV file not found at: {data_path}")
+
+        # Load CSV file
+        df = pd.read_csv(data_path)
+        
+        # Create cities dictionary
+        cities = {}
+        for _, row in df.iterrows():
+            # Skip entries with missing coordinates
+            if pd.isna(row['LATITUDE']) or pd.isna(row['LONGITUDE']):
+                continue
+                
+            city_key = f"{row['CITY']}, {row['DISTRICT']}"
+            cities[city_key] = {
+                "lat": float(row['LATITUDE']),
+                "lon": float(row['LONGITUDE']),
+                "state": row['STATE'],
+                "district": row['DISTRICT'],
+                "city": row['CITY']
+            }
+        
+        # Build neighbors dictionary based on distance
+        neighbors = {}
+        distance_threshold = 100  # kilometers
+        
+        for city1 in cities:
+            neighbors[city1] = []
+            city1_info = cities[city1]
+            
+            for city2 in cities:
+                if city1 != city2:
+                    city2_info = cities[city2]
+                    # Calculate distance between cities
+                    distance = haversine_distance(
+                        city1_info['lat'], city1_info['lon'],
+                        city2_info['lat'], city2_info['lon']
+                    )
+                    # If cities are within threshold distance and in same or adjacent state
+                    if distance < distance_threshold:
+                        neighbors[city1].append(city2)
+            
+            # Ensure each city has at least 2-3 neighbors
+            if len(neighbors[city1]) < 2:
+                # Find closest cities if not enough neighbors
+                distances = [(city2, haversine_distance(
+                    city1_info['lat'], city1_info['lon'],
+                    cities[city2]['lat'], cities[city2]['lon']
+                )) for city2 in cities if city2 != city1]
+                
+                distances.sort(key=lambda x: x[1])
+                # Add closest cities as neighbors
+                for city, _ in distances[:3]:
+                    if city not in neighbors[city1]:
+                        neighbors[city1].append(city)
+        
+        return cities, neighbors
+
+    except Exception as e:
+        print(f"Error loading city data: {e}")
+        # Return minimal fallback data
+        cities = {
+            "Delhi, Central Delhi": {
+                "lat": 28.6139, "lon": 77.2090,
+                "state": "Delhi", "district": "Central Delhi",
+                "city": "Delhi"
+            },
+            "Mumbai, Mumbai City": {
+                "lat": 19.0760, "lon": 72.8777,
+                "state": "Maharashtra", "district": "Mumbai City",
+                "city": "Mumbai"
+            },
+            # ... more fallback cities if needed ...
         }
-    }
-    
-    # Define direct connections between cities (bidirectional)
-    neighbors = {
-        "Delhi": ["Mumbai", "Hyderabad"],
-        "Mumbai": ["Delhi", "Bangalore", "Hyderabad"],
-        "Bangalore": ["Mumbai", "Chennai", "Hyderabad"],
-        "Chennai": ["Bangalore", "Hyderabad"],
-        "Hyderabad": ["Delhi", "Mumbai", "Bangalore", "Chennai"]
-    }
-    
-    return cities, neighbors
+        
+        neighbors = {
+            "Delhi, Central Delhi": ["Mumbai, Mumbai City"],
+            "Mumbai, Mumbai City": ["Delhi, Central Delhi"],
+            # ... more fallback neighbors if needed ...
+        }
+        return cities, neighbors
 
 def run_search(city1, city2, algorithm="A*", heuristic_type="Straight-line", cities=None, neighbors=None):
     """Run the specified search algorithm to find optimal meeting point."""
@@ -76,14 +123,13 @@ def run_search(city1, city2, algorithm="A*", heuristic_type="Straight-line", cit
 
     start_time = time.time()
     nodes_generated = 0
-    max_nodes = 1000  # Limit search space
     
     frontier = []
     initial_h = get_heuristic((city1, city2))
     heapq.heappush(frontier, (initial_h, 0, (city1, city2), [city1, city2]))
     explored = set()
     
-    while frontier and nodes_generated < max_nodes:
+    while frontier:
         priority, cost_so_far, (city_a, city_b), path = heapq.heappop(frontier)
         nodes_generated += 1
         
@@ -102,37 +148,35 @@ def run_search(city1, city2, algorithm="A*", heuristic_type="Straight-line", cit
             
         explored.add((city_a, city_b))
         
-        # Generate successors - one or both agents move to neighboring cities
+        # Generate successors
+        successors = []
+        # Option 1: Only first person moves
         for next_a in neighbors[city_a]:
             cost_a = get_step_cost(city_a, next_a)
-            
-            # Option 1: Only agent A moves
-            new_state = (next_a, city_b)
-            if new_state not in explored:
-                new_cost = cost_so_far + cost_a
-                h = get_heuristic(new_state)
-                priority = h if algorithm == "Greedy Best-First" else new_cost + h
-                heapq.heappush(frontier, (priority, new_cost, new_state, path + [next_a, city_b]))
-            
-            # Option 2: Both agents move
-            for next_b in neighbors[city_b]:
-                cost_b = get_step_cost(city_b, next_b)
-                new_state = (next_a, next_b)
-                if new_state not in explored:
-                    new_cost = cost_so_far + max(cost_a, cost_b)  # Parallel movement
-                    h = get_heuristic(new_state)
-                    priority = h if algorithm == "Greedy Best-First" else new_cost + h
-                    heapq.heappush(frontier, (priority, new_cost, new_state, path + [next_a, next_b]))
+            successors.append((next_a, city_b, cost_a))
         
-        # Option 3: Only agent B moves
+        # Option 2: Only second person moves
         for next_b in neighbors[city_b]:
-            new_state = (city_a, next_b)
+            cost_b = get_step_cost(city_b, next_b)
+            successors.append((city_a, next_b, cost_b))
+        
+        # Option 3: Both move simultaneously
+        for next_a in neighbors[city_a]:
+            for next_b in neighbors[city_b]:
+                cost_a = get_step_cost(city_a, next_a)
+                cost_b = get_step_cost(city_b, next_b)
+                successors.append((next_a, next_b, max(cost_a, cost_b)))
+        
+        # Process all successors
+        for next_a, next_b, step_cost in successors:
+            new_state = (next_a, next_b)
             if new_state not in explored:
-                new_cost = cost_so_far + get_step_cost(city_b, next_b)
+                new_cost = cost_so_far + step_cost
                 h = get_heuristic(new_state)
                 priority = h if algorithm == "Greedy Best-First" else new_cost + h
-                heapq.heappush(frontier, (priority, new_cost, new_state, path + [city_a, next_b]))
+                heapq.heappush(frontier, (priority, new_cost, new_state, path + [next_a, next_b]))
     
+    # If no solution found after exhaustive search
     return {
         "path": None,
         "total_cost": None,

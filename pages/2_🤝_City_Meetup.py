@@ -117,7 +117,7 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             neighbors=neighbors
         )
         
-        if result:
+        if result and result["path"] is not None and result["total_cost"] is not None:
             st.success("Found optimal meeting point! 🎯")
             
             # Show metrics in columns
@@ -131,7 +131,21 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             
             # Show path details in an expander
             with st.expander("View Detailed Path"):
-                st.write("Path sequence:", " → ".join(result['path']))
+                if isinstance(result['path'], list):
+                    st.write("Path sequence:", " → ".join(result['path']))
+                    if result['meeting_point']:
+                        st.write(f"Meeting Point: {result['meeting_point']}")
+                else:
+                    st.write("No valid path found")
                 
         else:
-            st.error("No valid meeting point found! Try different cities or search parameters.")
+            st.error("No valid meeting point found! This could be because:")
+            st.write("- The cities are too far apart")
+            st.write("- No valid path exists between the cities")
+            st.write("- The search exceeded the maximum allowed steps")
+            st.write("\nTry selecting different cities or changing the search parameters.")
+            
+            # Still show search statistics if available
+            if result and result["nodes_generated"] is not None:
+                st.write(f"Nodes explored: {result['nodes_generated']}")
+                st.write(f"Search time: {result['time_taken']*1000:.1f} ms")
