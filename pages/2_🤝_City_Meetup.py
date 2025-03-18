@@ -1,0 +1,137 @@
+import streamlit as st
+import folium
+from streamlit_folium import st_folium
+from utils.meetup_utils import load_city_data, run_search, haversine_distance
+
+st.set_page_config(page_title="City Meetup Search", page_icon="🤝", layout="wide")
+
+st.title("Optimal Common Meetup Search")
+st.markdown("""
+Find the optimal meeting point between two cities in India. The search considers:
+- Straight-line distance or realistic road distance as heuristics
+- Different search strategies (A* and Greedy Best-First Search)
+- Time taken for each person to reach the meeting point
+""")
+
+# Load city data
+cities, neighbors = load_city_data()
+
+# Sidebar controls
+with st.sidebar:
+    st.header("Search Configuration")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        state1 = st.selectbox(
+            "Your State",
+            sorted(set(city["state"] for city in cities.values()))
+        )
+    with col2:
+        state2 = st.selectbox(
+            "Friend's State",
+            sorted(set(city["state"] for city in cities.values())),
+            index=1
+        )
+    
+    # Filter cities by selected states
+    cities_state1 = {name: info for name, info in cities.items() if info["state"] == state1}
+    cities_state2 = {name: info for name, info in cities.items() if info["state"] == state2}
+    
+    my_city = st.selectbox("Your City", sorted(cities_state1.keys()))
+    friend_city = st.selectbox("Friend's City", sorted(cities_state2.keys()))
+    
+    st.markdown("---")
+    
+    heuristic = st.selectbox(
+        "Heuristic Function",
+        ["Straight-line", "Road Distance"],
+        help="Straight-line uses direct distance, Road Distance adds 40% to account for actual roads"
+    )
+    
+    algorithm = st.selectbox(
+        "Search Algorithm",
+        ["A*", "Greedy Best-First"],
+        help="A* considers both path cost and heuristic, Greedy only uses heuristic"
+    )
+
+# Main content area
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("Interactive Map")
+    
+    # Create map centered between the two cities
+    center_lat = (cities[my_city]["lat"] + cities[friend_city]["lat"]) / 2
+    center_lon = (cities[my_city]["lon"] + cities[friend_city]["lon"]) / 2
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=5)
+    
+    # Add markers for all cities
+    for city, info in cities.items():
+        color = "green" if city == my_city else "blue" if city == friend_city else "gray"
+        icon = "star" if city in [my_city, friend_city] else "info-sign"
+        
+        folium.Marker(
+            location=[info["lat"], info["lon"]],
+            popup=f"{city} ({info['state']})",
+            icon=folium.Icon(color=color, icon=icon)
+        ).add_to(m)
+        
+    # Add lines for neighboring cities
+    for city, city_neighbors in neighbors.items():
+        for neighbor in city_neighbors:
+            points = [
+                [cities[city]["lat"], cities[city]["lon"]],
+                [cities[neighbor]["lat"], cities[neighbor]["lon"]]
+            ]
+            folium.PolyLine(
+                points,
+                weight=2,
+                color="gray",
+                opacity=0.5
+            ).add_to(m)
+    
+    # Display the map
+    st_folium(m, width=700, height=500)
+
+with col2:
+    st.subheader("Current Selection")
+    st.write(f"**Your Location:** {my_city}, {cities[my_city]['state']}")
+    st.write(f"**Friend's Location:** {friend_city}, {cities[friend_city]['state']}")
+    
+    # Calculate direct distance
+    direct_distance = haversine_distance(
+        cities[my_city]["lat"], cities[my_city]["lon"],
+        cities[friend_city]["lat"], cities[friend_city]["lon"]
+    )
+    st.write(f"**Direct Distance:** {direct_distance:.1f} km")
+
+# Search section
+st.markdown("---")
+if st.button("Find Optimal Meeting Point", type="primary"):
+    with st.spinner("Searching for optimal meeting point..."):
+        result = run_search(
+            my_city, friend_city,
+            algorithm=algorithm,
+            heuristic_type=heuristic,
+            cities=cities,
+            neighbors=neighbors
+        )
+        
+        if result:
+            st.success("Found optimal meeting point! 🎯")
+            
+            # Show metrics in columns
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Travel Cost", f"{result['total_cost']:.1f} km")
+            with col2:
+                st.metric("Nodes Generated", result['nodes_generated'])
+            with col3:
+                st.metric("Search Time", f"{result['time_taken']*1000:.1f} ms")
+            
+            # Show path details in an expander
+            with st.expander("View Detailed Path"):
+                st.write("Path sequence:", " → ".join(result['path']))
+                
+        else:
+            st.error("No valid meeting point found! Try different cities or search parameters.")
