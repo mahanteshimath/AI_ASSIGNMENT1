@@ -31,23 +31,43 @@ with col1:
     st.subheader("Warehouse Configuration")
     warehouse, package_locations, dropoff_locations, obstacle_locations = setup_warehouse(N, M, P, O)
     
-    # Create a stylized version of the warehouse grid
-    html_grid = "<div style='font-family: monospace; line-height: 1;'>"
-    for row in warehouse:
+    # Create a stylized version of the warehouse grid with row and column numbers
+    html_grid = "<div style='font-family: monospace; line-height: 1.2;'>"
+    
+    # Add column numbers header
+    html_grid += "<div style='margin-left: 25px;'>"  # Offset for row numbers
+    html_grid += "".join([f"<span style='display: inline-block; width: 30px; text-align: center; color: #666;'>{i}</span>" for i in range(M)])
+    html_grid += "</div>"
+    
+    # Add rows with row numbers
+    for i, row in enumerate(warehouse):
         html_grid += "<div>"
+        # Add row number
+        html_grid += f"<span style='display: inline-block; width: 25px; color: #666;'>{i}</span>"
+        # Add cells
         for cell in row:
             if cell == '.':
-                html_grid += "⬜"  # Empty space
+                html_grid += "<span style='display: inline-block; width: 30px; text-align: center;'>⬜</span>"  # Empty space
             elif cell == 'O':
-                html_grid += "🚫"  # Obstacle
+                html_grid += "<span style='display: inline-block; width: 30px; text-align: center;'>🚫</span>"  # Obstacle
             elif cell.startswith('P'):
-                html_grid += "📦"  # Package
+                html_grid += f"<span style='display: inline-block; width: 30px; text-align: center; color: #1f77b4;'>📦<sub>{cell[1]}</sub></span>"  # Package with number
             elif cell.startswith('D'):
-                html_grid += "🎯"  # Drop-off point
+                html_grid += f"<span style='display: inline-block; width: 30px; text-align: center; color: #2ca02c;'>🎯<sub>{cell[1]}</sub></span>"  # Drop-off with number
         html_grid += "</div>"
     html_grid += "</div>"
     
+    # Display the grid
     st.markdown(html_grid, unsafe_allow_html=True)
+    
+    # Add legend
+    st.markdown("""
+    **Legend:**
+    - ⬜ Empty space
+    - 🚫 Obstacle
+    - 📦₁ Package (numbered)
+    - 🎯₁ Drop-off point (numbered)
+    """)
 
 with col2:
     st.subheader("Locations")
@@ -56,7 +76,7 @@ with col2:
     st.write("🚫 Obstacles:", obstacle_locations)
 
 # Simulation section
-st.subheader("Agent Simulation")
+st.subheader("Agent Simulation with UCS")
 if st.button("Run Simulation"):
     with st.spinner("Running simulation..."):
         total_cost, total_reward, final_reward, paths = run_agent_simulation(
