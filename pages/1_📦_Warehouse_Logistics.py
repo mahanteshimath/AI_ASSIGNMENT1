@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-from utils.warehouse_utils import setup_warehouse, run_agent_simulation
+from utils.warehouse_utils import setup_warehouse, run_agent_simulation, get_cell_content
 
 st.set_page_config(page_title="Warehouse Logistics", page_icon="📦")
 
@@ -46,14 +46,15 @@ with col1:
         html_grid += f"<span style='display: inline-block; width: 25px; color: #666;'>{i}</span>"
         # Add cells
         for cell in row:
-            if cell == '.':
-                html_grid += "<span style='display: inline-block; width: 30px; text-align: center;'>⬜</span>"  # Empty space
-            elif cell == 'O':
-                html_grid += "<span style='display: inline-block; width: 30px; text-align: center;'>🚫</span>"  # Obstacle
-            elif cell.startswith('P'):
-                html_grid += f"<span style='display: inline-block; width: 30px; text-align: center; color: #1f77b4;'>📦<sub>{cell[1]}</sub></span>"  # Package with number
-            elif cell.startswith('D'):
-                html_grid += f"<span style='display: inline-block; width: 30px; text-align: center; color: #2ca02c;'>🎯<sub>{cell[1]}</sub></span>"  # Drop-off with number
+            cell_type, number = get_cell_content(cell)
+            if cell_type == 'empty':
+                html_grid += "<span style='display: inline-block; width: 30px; text-align: center;'>⬜</span>"
+            elif cell_type == 'obstacle':
+                html_grid += "<span style='display: inline-block; width: 30px; text-align: center;'>🚧</span>"
+            elif cell_type == 'package':
+                html_grid += f"<span style='display: inline-block; width: 30px; text-align: center; color: #1f77b4;'>📦<sub>{number}</sub></span>"
+            elif cell_type == 'dropoff':
+                html_grid += f"<span style='display: inline-block; width: 30px; text-align: center; color: #2ca02c;'>🎯<sub>{number}</sub></span>"
         html_grid += "</div>"
     html_grid += "</div>"
     
@@ -64,7 +65,7 @@ with col1:
     st.markdown("""
     **Legend:**
     - ⬜ Empty space
-    - 🚫 Obstacle
+    - 🚧 Obstacle
     - 📦₁ Package (numbered)
     - 🎯₁ Drop-off point (numbered)
     """)
@@ -73,7 +74,7 @@ with col2:
     st.subheader("Locations")
     st.write("📦 Packages:", package_locations)
     st.write("🎯 Drop-offs:", dropoff_locations)
-    st.write("🚫 Obstacles:", obstacle_locations)
+    st.write("🚧 Obstacles:", obstacle_locations)
 
 # Simulation section
 st.subheader("Agent Simulation with UCS")
@@ -83,22 +84,26 @@ if st.button("Run Simulation"):
             warehouse, package_locations, dropoff_locations
         )
         
-        # Display results in an organized way
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Cost", total_cost)
-        with col2:
-            st.metric("Total Reward", total_reward)
-        with col3:
-            st.metric("Final Reward", final_reward)
-        
-        # Show detailed path information in an expander
-        with st.expander("View Detailed Paths"):
-            for i, step in enumerate(paths, 1):
-                st.markdown(f"**Package {i}**")
-                st.write("Path to package:", step["path_to_package"])
-                st.write("Path to drop-off:", step["path_to_dropoff"])
-                st.write("---")
+        if paths is None:
+            st.error("No valid path found! The warehouse configuration might be blocking some routes.")
+        else:
+            # Display results in an organized way
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Cost", total_cost)
+            with col2:
+                st.metric("Total Reward", total_reward)
+            with col3:
+                st.metric("Final Reward", final_reward)
+            
+            # Show detailed path information in an expander
+            with st.expander("View Detailed Paths"):
+                for i, step in enumerate(paths, 1):
+                    st.markdown(f"**Package {i}**")
+                    st.write("Path to package:", step["path_to_package"])
+                    st.write("Path to drop-off:", step["path_to_dropoff"])
+                    st.write("---")
+
 # Adding a footer
 
 st.markdown(
