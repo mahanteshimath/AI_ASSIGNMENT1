@@ -1,6 +1,32 @@
 import numpy as np
 from queue import PriorityQueue
 
+def get_cell_content(cell):
+    """Safely parse cell content and return type and number."""
+    if isinstance(cell, str):
+        if cell == '.':
+            return ('empty', None)
+        elif cell == 'O':
+            return ('obstacle', None)
+        elif cell.startswith('P'):
+            return ('package', cell[1:])
+        elif cell.startswith('D'):
+            return ('dropoff', cell[1:])
+    return ('unknown', None)
+
+def get_cell_display(cell):
+    """Get the display representation of a cell."""
+    cell_type, number = get_cell_content(cell)
+    if cell_type == 'empty':
+        return '.'
+    elif cell_type == 'obstacle':
+        return 'O'
+    elif cell_type == 'package':
+        return f'P{number}'
+    elif cell_type == 'dropoff':
+        return f'D{number}'
+    return str(cell)
+
 def setup_warehouse(N=8, M=8, P=4, O=5):
     """Initialize warehouse grid with packages, drop-off points, and obstacles."""
     # Validate input parameters
@@ -51,6 +77,16 @@ def setup_warehouse(N=8, M=8, P=4, O=5):
     
     if obstacles_placed < O:
         raise RuntimeError("Could not place all obstacles")
+
+    # When setting cell values, use get_cell_display:
+    for idx, (x, y) in enumerate(package_locations):
+        warehouse[x][y] = get_cell_display(f'P{idx+1}')
+    
+    for idx, (x, y) in enumerate(dropoff_locations):
+        warehouse[x][y] = get_cell_display(f'D{idx+1}')
+    
+    for x, y in obstacle_locations:
+        warehouse[x][y] = get_cell_display('O')
 
     return warehouse, package_locations, dropoff_locations, obstacle_locations
 
