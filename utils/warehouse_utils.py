@@ -3,37 +3,55 @@ from queue import PriorityQueue
 
 def setup_warehouse(N=8, M=8, P=4, O=5):
     """Initialize warehouse grid with packages, drop-off points, and obstacles."""
+    # Validate input parameters
+    if N <= 0 or M <= 0:
+        raise ValueError("Grid dimensions must be positive")
+    if P <= 0:
+        raise ValueError("Number of packages must be positive")
+    if O < 0:
+        raise ValueError("Number of obstacles cannot be negative")
+    if P + O >= N * M:
+        raise ValueError("Too many packages and obstacles for grid size")
+
     # Initialize empty warehouse
     warehouse = np.full((N, M), '.')
     package_locations, dropoff_locations, obstacle_locations = [], [], []
     
-    # Place packages and drop-off points
+    # Place packages and drop-off points with maximum retry attempts
+    max_attempts = 100
     for i in range(P):
-        while True:
+        attempts = 0
+        while attempts < max_attempts:
             package = (np.random.randint(0, N), np.random.randint(0, M))
             dropoff = (np.random.randint(0, N), np.random.randint(0, M))
-            if package != dropoff and package not in package_locations and dropoff not in dropoff_locations:
+            if (package != dropoff and 
+                package not in package_locations and 
+                dropoff not in dropoff_locations and
+                warehouse[package[0]][package[1]] == '.' and
+                warehouse[dropoff[0]][dropoff[1]] == '.'):
                 package_locations.append(package)
                 dropoff_locations.append(dropoff)
+                warehouse[package[0]][package[1]] = f'P{i+1}'
+                warehouse[dropoff[0]][dropoff[1]] = f'D{i+1}'
                 break
+            attempts += 1
+        if attempts >= max_attempts:
+            raise RuntimeError("Could not place packages and drop-off points")
+
+    # Place obstacles with validation
+    obstacles_placed = 0
+    attempts = 0
+    while obstacles_placed < O and attempts < max_attempts:
+        obstacle = (np.random.randint(0, N), np.random.randint(0, M))
+        if warehouse[obstacle[0]][obstacle[1]] == '.':
+            warehouse[obstacle[0]][obstacle[1]] = 'O'
+            obstacle_locations.append(obstacle)
+            obstacles_placed += 1
+        attempts += 1
     
-    # Mark packages on grid
-    for idx, (x, y) in enumerate(package_locations):
-        warehouse[x][y] = f'P{idx+1}'
-    
-    # Mark drop-off points on grid
-    for idx, (x, y) in enumerate(dropoff_locations):
-        warehouse[x][y] = f'D{idx+1}'
-    
-    # Place obstacles
-    for _ in range(O):
-        while True:
-            obstacle = (np.random.randint(0, N), np.random.randint(0, M))
-            if warehouse[obstacle[0]][obstacle[1]] == '.':
-                warehouse[obstacle[0]][obstacle[1]] = 'O'
-                obstacle_locations.append(obstacle)
-                break
-    
+    if obstacles_placed < O:
+        raise RuntimeError("Could not place all obstacles")
+
     return warehouse, package_locations, dropoff_locations, obstacle_locations
 
 def ucs(start, goal, grid, N, M):
@@ -72,7 +90,15 @@ def ucs(start, goal, grid, N, M):
 
 def run_agent_simulation(warehouse, package_locations, dropoff_locations, start=(0,0)):
     """Simulate the agent delivering all packages."""
+    if not package_locations or not dropoff_locations:
+        raise ValueError("No packages or drop-off points provided")
+    if len(package_locations) != len(dropoff_locations):
+        raise ValueError("Mismatch in number of packages and drop-off points")
+    
     N, M = warehouse.shape
+    if not (0 <= start[0] < N and 0 <= start[1] < M):
+        raise ValueError("Invalid start position")
+
     total_cost = 0
     total_reward = 0
     paths = []
