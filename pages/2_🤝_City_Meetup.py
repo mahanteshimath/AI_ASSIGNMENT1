@@ -65,6 +65,10 @@ if 'map_zoom' not in st.session_state:
     st.session_state.map_zoom = 5
 if 'search_result' not in st.session_state:
     st.session_state.search_result = None
+if 'search_clicked' not in st.session_state:
+    st.session_state.search_clicked = False
+if 'last_search_params' not in st.session_state:
+    st.session_state.last_search_params = None
 
 def create_map(cities, my_city, friend_city, search_result=None):
     # Use stored map center and zoom if available, otherwise calculate default
@@ -123,6 +127,28 @@ def create_map(cities, my_city, friend_city, search_result=None):
     
     return m
 
+def display_search_results(result):
+    """Display search results and metrics"""
+    st.success("Found optimal meeting point! 🎯")
+    
+    # Show metrics in columns
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Travel Cost", f"{result['total_cost']:.1f} km")
+    with col2:
+        st.metric("Nodes Generated", result['nodes_generated'])
+    with col3:
+        st.metric("Search Time", f"{result['time_taken']*1000:.6f} ms")
+    
+    # Show path details in an expander
+    with st.expander("View Detailed Path"):
+        if isinstance(result['path'], list):
+            st.write("Path sequence:", " → ".join(result['path']))
+            if result['meeting_point']:
+                st.write(f"Meeting Point: {result['meeting_point']}")
+        else:
+            st.write("No valid path found")
+
 # Main content area
 col1, col2 = st.columns([2, 1])
 
@@ -162,51 +188,47 @@ with col2:
 
 # Search section
 st.markdown("---")
-if st.button("Find Optimal Meeting Point", type="primary"):
-    with st.spinner("Searching for optimal meeting point..."):
-        result = run_search(
-            my_city, friend_city,
-            algorithm=algorithm,
-            heuristic_type=heuristic,
-            cities=cities,
-            neighbors=neighbors
-        )
+search_params = {
+    'my_city': my_city,
+    'friend_city': friend_city,
+    'algorithm': algorithm,
+    'heuristic': heuristic
+}
+
+if st.button("Find Optimal Meeting Point", type="primary") or st.session_state.search_clicked:
+    # Check if we need to perform a new search
+    if (not st.session_state.search_clicked or 
+        search_params != st.session_state.last_search_params):
         
-        if result and result["path"] is not None and result["total_cost"] is not None:
-            st.success("Found optimal meeting point! 🎯")
+        with st.spinner("Searching for optimal meeting point..."):
+            result = run_search(
+                my_city, friend_city,
+                algorithm=algorithm,
+                heuristic_type=heuristic,
+                cities=cities,
+                neighbors=neighbors
+            )
             
-            # Store result in session state
-            st.session_state.search_result = result
-            
-            # Show metrics in columns
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Travel Cost", f"{result['total_cost']:.1f} km")
-            with col2:
-                st.metric("Nodes Generated", result['nodes_generated'])
-            with col3:
-                st.metric("Search Time", f"{result['time_taken']*1000:.6f} ms")
-            
-            # Show path details in an expander
-            with st.expander("View Detailed Path"):
-                if isinstance(result['path'], list):
-                    st.write("Path sequence:", " → ".join(result['path']))
-                    if result['meeting_point']:
-                        st.write(f"Meeting Point: {result['meeting_point']}")
-                else:
-                    st.write("No valid path found")
-        else:
-            st.session_state.search_result = None
-            st.error("No valid meeting point found! This could be because:")
-            st.write("- The cities are too far apart")
-            st.write("- No valid path exists between the cities")
-            st.write("- The search exceeded the maximum allowed steps")
-            st.write("\nTry selecting different cities or changing the search parameters.")
-            
-            # Still show search statistics if available
-            if result and result["nodes_generated"] is not None:
-                st.write(f"Nodes explored: {result['nodes_generated']}")
-                st.write(f"Search time: {result['time_taken']*1000:.1f} ms")
+            if result and result["path"] is not None and result["total_cost"] is not None:
+                st.session_state.search_result = result
+                st.session_state.search_clicked = True
+                st.session_state.last_search_params = search_params
+            else:
+                st.session_state.search_result = None
+                st.session_state.search_clicked = False
+                st.error("No valid meeting point found! This could be because:")
+                st.write("- The cities are too far apart")
+                st.write("- No valid path exists between the cities")
+                st.write("- The search exceeded the maximum allowed steps")
+                st.write("\nTry selecting different cities or changing the search parameters.")
+                
+                if result and result["nodes_generated"] is not None:
+                    st.write(f"Nodes explored: {result['nodes_generated']}")
+                    st.write(f"Search time: {result['time_taken']*1000:.1f} ms")
+    
+    # Display results if they exist
+    if st.session_state.search_result:
+        display_search_results(st.session_state.search_result)
 
 # Adding a footer
 
