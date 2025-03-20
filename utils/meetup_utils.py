@@ -35,7 +35,7 @@ def load_city_data():
             if pd.isna(row['LATITUDE']) or pd.isna(row['LONGITUDE']):
                 continue
                 
-            city_key = f"{row['CITY']}}"
+            city_key = f"{row['CITY']}"
             cities[city_key] = {
                 "lat": float(row['LATITUDE']),
                 "lon": float(row['LONGITUDE']),
