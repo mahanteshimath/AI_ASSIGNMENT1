@@ -58,44 +58,95 @@ with st.sidebar:
         help="A* considers both path cost and heuristic, Greedy only uses heuristic"
     )
 
+# Initialize session state for map view
+if 'map_center' not in st.session_state:
+    st.session_state.map_center = None
+if 'map_zoom' not in st.session_state:
+    st.session_state.map_zoom = 5
+if 'search_result' not in st.session_state:
+    st.session_state.search_result = None
+
+def create_map(cities, my_city, friend_city, search_result=None):
+    # Use stored map center and zoom if available, otherwise calculate default
+    if st.session_state.map_center:
+        center_lat, center_lon = st.session_state.map_center
+        zoom_start = st.session_state.map_zoom
+    else:
+        center_lat = (cities[my_city]["lat"] + cities[friend_city]["lat"]) / 2
+        center_lon = (cities[my_city]["lon"] + cities[friend_city]["lon"]) / 2
+        zoom_start = 5
+        st.session_state.map_center = [center_lat, center_lon]
+    
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start)
+    
+    if search_result is None or not search_result.get('path'):
+        # Show only source and destination cities
+        for city in [my_city, friend_city]:
+            color = "green" if city == my_city else "blue"
+            folium.Marker(
+                location=[cities[city]["lat"], cities[city]["lon"]],
+                popup=f"{city} ({cities[city]['state']})",
+                icon=folium.Icon(color=color, icon="star")
+            ).add_to(m)
+    else:
+        # Show path and meeting point
+        for i, city in enumerate(search_result['path']):
+            color = "green" if city == my_city else "blue" if city == friend_city else "red"
+            icon = "star" if city in [my_city, friend_city] else "info-sign"
+            
+            folium.Marker(
+                location=[cities[city]["lat"], cities[city]["lon"]],
+                popup=f"{city} ({cities[city]['state']})",
+                icon=folium.Icon(color=color, icon=icon)
+            ).add_to(m)
+            
+            if i < len(search_result['path']) - 1:
+                next_city = search_result['path'][i + 1]
+                points = [
+                    [cities[city]["lat"], cities[city]["lon"]],
+                    [cities[next_city]["lat"], cities[next_city]["lon"]]
+                ]
+                folium.PolyLine(
+                    points,
+                    weight=3,
+                    color="red",
+                    opacity=0.8
+                ).add_to(m)
+        
+        if search_result.get('meeting_point'):
+            meeting_city = search_result['meeting_point']
+            folium.Marker(
+                location=[cities[meeting_city]["lat"], cities[meeting_city]["lon"]],
+                popup=f"Meeting Point: {meeting_city}",
+                icon=folium.Icon(color="purple", icon="flag")
+            ).add_to(m)
+    
+    return m
+
 # Main content area
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("Interactive Map")
+    # Create and display map based on current state
+    m = create_map(cities, my_city, friend_city, st.session_state.search_result)
     
-    # Create map centered between the two cities
-    center_lat = (cities[my_city]["lat"] + cities[friend_city]["lat"]) / 2
-    center_lon = (cities[my_city]["lon"] + cities[friend_city]["lon"]) / 2
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=5)
+    # Use st_folium with key parameter only
+    map_data = st_folium(
+        m,
+        width=700,
+        height=500,
+        key="main_map"
+    )
     
-    # Add markers for all cities
-    for city, info in cities.items():
-        color = "green" if city == my_city else "blue" if city == friend_city else "gray"
-        icon = "star" if city in [my_city, friend_city] else "info-sign"
-        
-        folium.Marker(
-            location=[info["lat"], info["lon"]],
-            popup=f"{city} ({info['state']})",
-            icon=folium.Icon(color=color, icon=icon)
-        ).add_to(m)
-        
-    # Add lines for neighboring cities
-    for city, city_neighbors in neighbors.items():
-        for neighbor in city_neighbors:
-            points = [
-                [cities[city]["lat"], cities[city]["lon"]],
-                [cities[neighbor]["lat"], cities[neighbor]["lon"]]
-            ]
-            folium.PolyLine(
-                points,
-                weight=2,
-                color="gray",
-                opacity=0.5
-            ).add_to(m)
-    
-    # Display the map
-    st_folium(m, width=700, height=500)
+    # Update map center and zoom based on user interaction
+    if map_data:
+        try:
+            center = map_data['bounds']['center']
+            st.session_state.map_center = [center['lat'], center['lng']]
+            st.session_state.map_zoom = map_data.get('zoom', 5)
+        except (KeyError, TypeError):
+            pass
 
 with col2:
     st.subheader("Current Selection")
@@ -124,6 +175,9 @@ if st.button("Find Optimal Meeting Point", type="primary"):
         if result and result["path"] is not None and result["total_cost"] is not None:
             st.success("Found optimal meeting point! 🎯")
             
+            # Store result in session state
+            st.session_state.search_result = result
+            
             # Show metrics in columns
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -141,8 +195,8 @@ if st.button("Find Optimal Meeting Point", type="primary"):
                         st.write(f"Meeting Point: {result['meeting_point']}")
                 else:
                     st.write("No valid path found")
-                
         else:
+            st.session_state.search_result = None
             st.error("No valid meeting point found! This could be because:")
             st.write("- The cities are too far apart")
             st.write("- No valid path exists between the cities")
