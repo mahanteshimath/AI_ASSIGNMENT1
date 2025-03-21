@@ -2,11 +2,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from utils.meetup_utils import load_city_data, run_search, haversine_distance
-st.logo(
-    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
-    link="https://www.linkedin.com/in/mahantesh-hiremath/",
-    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
-)
+
 st.set_page_config(page_title="City Meetup Search", page_icon="🤝", layout="wide")
 
 st.title("Optimal Common Meetup Search")
@@ -164,6 +160,9 @@ with col2:
 st.markdown("---")
 if st.button("Find Optimal Meeting Point", type="primary"):
     with st.spinner("Searching for optimal meeting point..."):
+        # Debug: Log inputs to run_search
+        st.write(f"Running search with: My City: {my_city}, Friend's City: {friend_city}, Algorithm: {algorithm}, Heuristic: {heuristic}")
+        
         result = run_search(
             my_city, friend_city,
             algorithm=algorithm,
@@ -172,7 +171,10 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             neighbors=neighbors
         )
         
-        if result and result["my_path"] is not None and result["total_cost"] is not None:
+        # Debug: Log the result from run_search
+        st.write(f"Search result: {result}")
+        
+        if result and result.get("path") and result.get("total_cost"):
             st.success("Found optimal meeting point! 🎯")
             
             # Store result in session state
@@ -181,18 +183,20 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             # Show metrics in columns
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Total Travel Cost", f"{result['total_cost']:.1f} km")
+                st.metric("Total Travel Cost", f"{result.get('total_cost', 0):.1f} km")
             with col2:
-                st.metric("Nodes Generated", result['nodes_generated'])
+                st.metric("Nodes Generated", result.get('nodes_generated', 0))
             with col3:
-                st.metric("Search Time", f"{result['time_taken']*1000:.6f} ms")
+                st.metric("Search Time", f"{result.get('time_taken', 0)*1000:.6f} ms")
             
             # Show path details in an expander
             with st.expander("View Detailed Path"):
-                if isinstance(result['path'], list):
-                    st.write("Path sequence:", " → ".join(result['path']))
-                    if result['meeting_point']:
-                        st.write(f"Meeting Point: {result['meeting_point']}")
+                path = result.get('path', [])
+                if path and isinstance(path, list):
+                    st.write("Path sequence:", " → ".join(path))
+                    meeting_point = result.get('meeting_point')
+                    if meeting_point:
+                        st.write(f"Meeting Point: {meeting_point}")
                 else:
                     st.write("No valid path found")
         else:
@@ -200,13 +204,16 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             st.error("No valid meeting point found! This could be because:")
             st.write("- The cities are too far apart")
             st.write("- No valid path exists between the cities")
-            st.write("- The search exceeded the maximum allowed steps")
             st.write("\nTry selecting different cities or changing the search parameters.")
             
             # Still show search statistics if available
-            if result and result["nodes_generated"] is not None:
-                st.write(f"Nodes explored: {result['nodes_generated']}")
-                st.write(f"Search time: {result['time_taken']*1000:.1f} ms")
+            if result:
+                nodes = result.get('nodes_generated')
+                time_taken = result.get('time_taken')
+                if nodes is not None:
+                    st.write(f"Nodes explored: {nodes}")
+                if time_taken is not None:
+                    st.write(f"Search time: {time_taken*1000:.1f} ms")
 
 # Adding a footer
 

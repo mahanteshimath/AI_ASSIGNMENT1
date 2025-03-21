@@ -46,7 +46,7 @@ def load_city_data():
         
         # Build neighbors dictionary based on distance
         neighbors = {}
-        distance_threshold = 100  # kilometers
+        distance_threshold = 500  # kilometers
         
         for city1 in cities:
             neighbors[city1] = []
@@ -104,89 +104,63 @@ def load_city_data():
         }
         return cities, neighbors
 
-def run_search(city1, city2, algorithm="A*", heuristic_type="Straight-line", cities=None, neighbors=None):
-    """Run the specified search algorithm to find optimal meeting point with complete paths for both."""
-    
-    def get_heuristic(state):
-        c1, c2 = state
-        dist = haversine_distance(
-            cities[c1]["lat"], cities[c1]["lon"],
-            cities[c2]["lat"], cities[c2]["lon"]
-        )
-        return dist if heuristic_type == "Straight-line" else dist * 1.4
+def run_search(my_city, friend_city, algorithm, heuristic_type, cities, neighbors):
+    def heuristic(state):
+        city1, city2 = state
+        if heuristic_type == "Straight-line":
+            return haversine_distance(cities[city1]["lat"], cities[city1]["lon"], cities[city2]["lat"], cities[city2]["lon"])
+        elif heuristic_type == "Road Distance":
+            return 1.4 * haversine_distance(cities[city1]["lat"], cities[city1]["lon"], cities[city2]["lat"], cities[city2]["lon"])
+        return 0
 
-    def get_step_cost(city_from, city_to):
-        return haversine_distance(
-            cities[city_from]["lat"], cities[city_from]["lon"],
-            cities[city_to]["lat"], cities[city_to]["lon"]
-        )
+    def get_neighbors(city):
+        return neighbors.get(city, [])
+
+    def search(start, goal, strategy):
+        frontier = []
+        heapq.heappush(frontier, (0, start))
+        came_from = {start: None}
+        cost_so_far = {start: 0}
+        nodes_generated = 0
+
+        while frontier:
+            _, current = heapq.heappop(frontier)
+            nodes_generated += 1
+
+            if current == goal:
+                break
+
+            for next_city in get_neighbors(current):
+                new_cost = cost_so_far[current] + 2 * haversine_distance(cities[current]["lat"], cities[current]["lon"], cities[next_city]["lat"], cities[next_city]["lon"])
+                if next_city not in cost_so_far or new_cost < cost_so_far[next_city]:
+                    cost_so_far[next_city] = new_cost
+                    priority = new_cost + heuristic((next_city, goal)) if strategy == "A*" else heuristic((next_city, goal))
+                    heapq.heappush(frontier, (priority, next_city))
+                    came_from[next_city] = current
+
+        path = []
+        if goal in came_from:
+            current = goal
+            while current:
+                path.append(current)
+                current = came_from[current]
+            path.reverse()
+
+        return path, cost_so_far.get(goal, float('inf')), nodes_generated
+
+    start_state = (my_city, friend_city)
+    goal_state = (friend_city, my_city)
 
     start_time = time.time()
-    nodes_generated = 0
-    
-    # Initialize state with separate paths for each person
-    frontier = []
-    initial_h = get_heuristic((city1, city2))
-    heapq.heappush(frontier, (initial_h, 0, (city1, city2, [city1], [city2])))
-    explored = set()
-    
-    while frontier:
-        priority, cost_so_far, state = heapq.heappop(frontier)
-        city_a, city_b, path_a, path_b = state
-        nodes_generated += 1
-        
-        # Goal test: when both persons meet
-        if city_a == city_b:
-            return {
-                "my_path": path_a,
-                "friend_path": path_b,
-                "total_cost": cost_so_far,
-                "nodes_generated": nodes_generated,
-                "time_taken": time.time() - start_time,
-                "meeting_point": city_a
-            }
-            
-        if (city_a, city_b) in explored:
-            continue
-            
-        explored.add((city_a, city_b))
-        
-        # Generate successors
-        successors = []
-        # Option 1: Only first person moves
-        for next_a in neighbors[city_a]:
-            cost_a = get_step_cost(city_a, next_a)
-            new_state = (next_a, city_b, path_a + [next_a], path_b)
-            successors.append((new_state, cost_a))
-        
-        # Option 2: Only second person moves
-        for next_b in neighbors[city_b]:
-            cost_b = get_step_cost(city_b, next_b)
-            new_state = (city_a, next_b, path_a, path_b + [next_b])
-            successors.append((new_state, cost_b))
-        
-        # Option 3: Both move simultaneously
-        for next_a in neighbors[city_a]:
-            for next_b in neighbors[city_b]:
-                cost_a = get_step_cost(city_a, next_a)
-                cost_b = get_step_cost(city_b, next_b)
-                step_cost = max(cost_a, cost_b)
-                new_state = (next_a, next_b, path_a + [next_a], path_b + [next_b])
-                successors.append((new_state, step_cost))
-        
-        for new_state, step_cost in successors:
-            new_cost = cost_so_far + step_cost
-            new_city_a, new_city_b, _, _ = new_state
-            if (new_city_a, new_city_b) not in explored:
-                h = get_heuristic((new_city_a, new_city_b))
-                prio = h if algorithm == "Greedy Best-First" else new_cost + h
-                heapq.heappush(frontier, (prio, new_cost, new_state))
-    
+    path, total_cost, nodes_generated = search(my_city, friend_city, algorithm)
+    time_taken = time.time() - start_time
+
+    meeting_point = path[len(path) // 2] if path else None
+
     return {
-        "my_path": None,
-        "friend_path": None,
-        "total_cost": None,
+        "path": path,
+        "total_cost": total_cost,
         "nodes_generated": nodes_generated,
-        "time_taken": time.time() - start_time,
-        "meeting_point": None
+        "time_taken": time_taken,
+        "meeting_point": meeting_point
     }
