@@ -24,21 +24,22 @@ with st.sidebar:
     with col1:
         state1 = st.selectbox(
             "Your State",
-            sorted(set(city["state"] for city in cities.values()))
+            sorted(set(city["state"] for city in cities.values())),
+            index=sorted(set(city["state"] for city in cities.values())).index("Karnataka")
         )
     with col2:
         state2 = st.selectbox(
             "Friend's State",
             sorted(set(city["state"] for city in cities.values())),
-            index=1
+            index=sorted(set(city["state"] for city in cities.values())).index("Rajasthan")
         )
     
     # Filter cities by selected states
     cities_state1 = {name: info for name, info in cities.items() if info["state"] == state1}
     cities_state2 = {name: info for name, info in cities.items() if info["state"] == state2}
     
-    my_city = st.selectbox("Your City", sorted(cities_state1.keys()))
-    friend_city = st.selectbox("Friend's City", sorted(cities_state2.keys()))
+    my_city = st.selectbox("Your City", sorted(cities_state1.keys()), index=sorted(cities_state1.keys()).index("Bengaluru"))
+    friend_city = st.selectbox("Friend's City", sorted(cities_state2.keys()), index=sorted(cities_state2.keys()).index("Jodhpur"))
     
     st.markdown("---")
     

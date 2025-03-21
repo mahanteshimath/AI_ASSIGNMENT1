@@ -46,7 +46,7 @@ def load_city_data():
         
         # Build neighbors dictionary based on distance
         neighbors = {}
-        distance_threshold = 500  # kilometers
+        distance_threshold = 150  # kilometers
         
         for city1 in cities:
             neighbors[city1] = []
