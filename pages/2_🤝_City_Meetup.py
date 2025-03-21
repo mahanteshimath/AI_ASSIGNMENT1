@@ -172,7 +172,7 @@ if st.button("Find Optimal Meeting Point", type="primary"):
             neighbors=neighbors
         )
         
-        if result and result["path"] is not None and result["total_cost"] is not None:
+        if result and result["my_path"] is not None and result["total_cost"] is not None:
             st.success("Found optimal meeting point! 🎯")
             
             # Store result in session state
