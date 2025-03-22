@@ -121,7 +121,7 @@ def create_map(cities, my_city, friend_city, search_result=None):
     return m
 
 # Main content area
-col1, col2 = st.columns(2)
+col1, col2 = st.columns([3, 1])
 
 with col1:
     st.subheader("Interactive Map")
