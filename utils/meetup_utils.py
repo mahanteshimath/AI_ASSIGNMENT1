@@ -31,7 +31,7 @@ def load_city_data():
         # Create cities dictionary
         cities = {}
         for _, row in df.iterrows():
-            # Skip entries with missing coordinates
+            # Skip entries with missing coordinates.
             if pd.isna(row['LATITUDE']) or pd.isna(row['LONGITUDE']):
                 continue
                 
