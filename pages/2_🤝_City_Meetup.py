@@ -131,9 +131,12 @@ with col1:
     # Use st_folium with key parameter only
     map_data = st_folium(
         m,
-        width=700,
-        height=500,
-        key="main_map"
+        width=900,
+        height=600,
+        key="main_map",
+        scroll_wheel_zoom=True
+     
+
     )
     
     # Update map center and zoom based on user interaction
