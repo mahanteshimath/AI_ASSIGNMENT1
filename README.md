@@ -1,5 +1,10 @@
 # AI Assignment 1 - IITJ
 
+
+# Click bellow to start running code 
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/mahanteshimath/AI_ASSIGNMENT1?quickstart=1)
+
 ## Overview
 This application implements two AI search problems:
 1. Warehouse Logistics Optimization
