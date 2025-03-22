@@ -133,8 +133,7 @@ with col1:
         m,
         width=900,
         height=600,
-        key="main_map",
-        scroll_wheel_zoom=True
+        key="main_map"
      
 
     )
