@@ -30,27 +30,46 @@ And various heuristics:
 if 'sudoku_grid' not in st.session_state:
     st.session_state.sudoku_grid = np.zeros((9, 9), dtype=int)
 
-# Add random puzzle button
-if st.button("Fill Numbers"):
-    # Generate a random valid Sudoku puzzle
-    base_puzzle = np.zeros((9, 9), dtype=int)
-    # Fill diagonal 3x3 boxes first (they are independent)
-    for i in range(0, 9, 3):
+def generate_solved_sudoku():
+    grid = np.zeros((9, 9), dtype=int)
+    # Fill diagonal 3x3 boxes
+    for box in range(0, 9, 3):
         nums = list(range(1, 10))
         np.random.shuffle(nums)
-        for row in range(3):
-            for col in range(3):
-                base_puzzle[i + row][i + col] = nums[row * 3 + col]
+        for i in range(3):
+            for j in range(3):
+                grid[box + i][box + j] = nums[i * 3 + j]
     
-    # Solve the puzzle to get a complete valid solution
-    solver = SudokuSolver(base_puzzle.copy())
-    solved = solve_with_backtracking(base_puzzle, "None")
+    # Solve the rest using backtracking
+    solve_with_backtracking(grid, "None")
+    return grid
+
+def create_puzzle(solved_grid, difficulty=0.6):
+    puzzle = solved_grid.copy()
+    cells = [(i, j) for i in range(9) for j in range(9)]
+    np.random.shuffle(cells)
     
-    # Create puzzle by randomly removing numbers (keeping around 30 numbers)
-    mask = np.random.choice([True, False], size=(9, 9), p=[0.65, 0.35])
-    puzzle = solved.copy()
-    puzzle[mask] = 0
+    # Remove numbers while ensuring unique solution
+    for i, j in cells:
+        temp = puzzle[i][j]
+        puzzle[i][j] = 0
+        # Make copy for solving
+        board_copy = puzzle.copy()
+        # If it doesn't have a unique solution, restore the number
+        if len([solve_with_backtracking(board_copy, "None")]) != 1:
+            puzzle[i][j] = temp
+        # Stop if we've reached desired difficulty
+        if np.count_nonzero(puzzle == 0) >= difficulty * 81:
+            break
     
+    return puzzle
+
+# Add random puzzle button
+if st.button("Fill Numbers"):
+    # Generate a complete solved Sudoku
+    solved_grid = generate_solved_sudoku()
+    # Create puzzle by removing numbers while ensuring unique solution
+    puzzle = create_puzzle(solved_grid)
     st.session_state.sudoku_grid = puzzle
 
 # Input grid
