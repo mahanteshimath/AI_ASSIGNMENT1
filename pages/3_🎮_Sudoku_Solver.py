@@ -30,6 +30,29 @@ And various heuristics:
 if 'sudoku_grid' not in st.session_state:
     st.session_state.sudoku_grid = np.zeros((9, 9), dtype=int)
 
+# Add random puzzle button
+if st.button("Fill Numbers"):
+    # Generate a random valid Sudoku puzzle
+    base_puzzle = np.zeros((9, 9), dtype=int)
+    # Fill diagonal 3x3 boxes first (they are independent)
+    for i in range(0, 9, 3):
+        nums = list(range(1, 10))
+        np.random.shuffle(nums)
+        for row in range(3):
+            for col in range(3):
+                base_puzzle[i + row][i + col] = nums[row * 3 + col]
+    
+    # Solve the puzzle to get a complete valid solution
+    solver = SudokuSolver(base_puzzle.copy())
+    solved = solve_with_backtracking(base_puzzle, "None")
+    
+    # Create puzzle by randomly removing numbers (keeping around 30 numbers)
+    mask = np.random.choice([True, False], size=(9, 9), p=[0.65, 0.35])
+    puzzle = solved.copy()
+    puzzle[mask] = 0
+    
+    st.session_state.sudoku_grid = puzzle
+
 # Input grid
 st.subheader("Input Sudoku Grid")
 cols = st.columns(9)
