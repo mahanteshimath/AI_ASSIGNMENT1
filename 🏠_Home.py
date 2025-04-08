@@ -30,6 +30,13 @@ st.markdown("""
 Use the sidebar to navigate between sections.
 """)
 
+st.markdown("""
+### Available Problems:
+1. 📦 Warehouse Logistics
+2. 🤝 City Meetup
+3. 🎮 Sudoku Solver
+""")
+
 st.markdown(
     '''
     <style>
