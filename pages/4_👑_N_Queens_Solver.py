@@ -123,7 +123,6 @@ def plot_board(queens):
     ax.grid(True)
     return fig
 
-st.set_page_config(page_title="N-Queens Solver", page_icon="👑")
 st.title("N-Queens Solver")
 st.markdown("""
 This page implements N-Queens solver using:
