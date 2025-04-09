@@ -108,30 +108,58 @@ if st.button("Solve"):
     if not is_valid_sudoku(st.session_state.sudoku_grid):
         st.error("Invalid Sudoku configuration!")
     else:
-        times = []
-        solved_grids = []
+        # Store results for all combinations
+        results = []
+        algorithms = ["Backtracking", "Forward Checking", "Arc Consistency"]
+        heuristics = ["None", "MRV", "Degree", "LCV"]
         
-        for _ in range(10):
-            start_time = time.time()
-            grid = st.session_state.sudoku_grid.copy()
-            
-            if algorithm == "Backtracking":
-                solved = solve_with_backtracking(grid, heuristic)
-            elif algorithm == "Forward Checking":
-                solved = solve_with_forward_checking(grid, heuristic)
-            else:
-                solved = solve_with_arc_consistency(grid, heuristic)
+        # Run each combination 10 times
+        for alg in algorithms:
+            for heur in heuristics:
+                times = []
+                for _ in range(10):
+                    start_time = time.time()
+                    grid = st.session_state.sudoku_grid.copy()
+                    
+                    if alg == "Backtracking":
+                        solved = solve_with_backtracking(grid, heur)
+                    elif alg == "Forward Checking":
+                        solved = solve_with_forward_checking(grid, heur)
+                    else:
+                        solved = solve_with_arc_consistency(grid, heur)
+                    
+                    end_time = time.time()
+                    times.append(end_time - start_time)
                 
-            end_time = time.time()
-            times.append(end_time - start_time)
-            solved_grids.append(solved)
+                # Store average results
+                results.append({
+                    'Algorithm': alg,
+                    'Heuristic': heur,
+                    'Avg Time': f"{np.mean(times):.4f}",
+                    'Std Dev': f"{np.std(times):.4f}"
+                })
         
+        # Display current solution
         st.subheader("Solution:")
-        st.write(solved_grids[0])
+        st.write(solved)
         
-        st.subheader("Performance Analysis")
-        st.write(f"Average solving time over 10 runs: {np.mean(times):.4f} seconds")
-        st.write(f"Standard deviation: {np.std(times):.4f} seconds")
+        # Display performance comparison table
+        st.subheader("Performance Comparison")
+        df = pd.DataFrame(results)
+        st.dataframe(df)
+        
+        # Display analysis
+        st.subheader("Analysis")
+        st.markdown("""
+        **Algorithm Performance Analysis:**
+        1. Forward Checking typically performs better than simple Backtracking due to early constraint detection
+        2. Arc Consistency provides additional pruning but has overhead for constraint propagation
+        
+        **Heuristic Impact:**
+        1. MRV helps by selecting variables with fewer remaining values first
+        2. Degree heuristic prioritizes more constrained variables
+        3. LCV can reduce branching factor but has overhead for value ordering
+        """)
 
 # Footer
 footer="""<style>
