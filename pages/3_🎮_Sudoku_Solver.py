@@ -12,6 +12,12 @@ from utils.sudoku_utils import (
 
 st.set_page_config(page_title="Sudoku Solver", page_icon="🎮")
 
+st.logo(
+    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+    link="https://www.linkedin.com/in/mahantesh-hiremath/",
+    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
+)
+
 st.title("Sudoku Puzzle Solver")
 
 st.markdown("""

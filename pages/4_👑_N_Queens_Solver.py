@@ -5,6 +5,20 @@ import time
 import seaborn as sns
 from matplotlib.patches import Rectangle
 
+
+st.logo(
+    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+    link="https://www.linkedin.com/in/mahantesh-hiremath/",
+    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
+)
+
+st.title("N-Queens Solver")
+st.markdown("""
+This application solves the N-Queens problem using various algorithms:
+- Simulated Annealing
+- Hill Climbing
+""")
+
 def calculate_conflicts(state):
     n = len(state)
     conflicts = 0

@@ -5,6 +5,12 @@ from utils.meetup_utils import load_city_data, run_search, haversine_distance
 
 st.set_page_config(page_title="City Meetup Search", page_icon="🤝", layout="wide")
 
+st.logo(
+    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+    link="https://www.linkedin.com/in/mahantesh-hiremath/",
+    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
+)
+
 st.title("Optimal Common Meetup Search")
 st.markdown("""
 Find the optimal meeting point between two cities in India. The search considers:
