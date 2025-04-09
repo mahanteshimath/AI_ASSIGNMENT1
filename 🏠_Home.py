@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="AI Assignment 1",
+    page_title="AI Assignment 1&2",
     page_icon="🏠",
     layout="wide"
 )
@@ -12,7 +12,7 @@ st.logo(
     icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
 )
 
-st.title("Artificial Intelligence– A1(IITJ)")
+st.title("Artificial Intelligence– A1 and A2 (IITJ)")
 st.markdown("**Prepared by:** Mahantesh Hiremath- G24AIT2178")
 
 st.markdown("""
@@ -26,6 +26,13 @@ st.markdown("""
    - Find optimal meeting points between two cities
    - Compare different search algorithms and heuristics
    - Interactive map visualization
+
+3. **🎮 Sudoku Solver**
+   - Solve Sudoku puzzles using backtracking algorithm
+   - Visualize the solving process
+   - User-friendly interface for inputting puzzles
+
+
 
 Use the sidebar to navigate between sections.
 """)
