@@ -231,28 +231,63 @@ with tab3:
     )
     
     if st.button("Solve with Constraint Propagation"):
-        csp = SudokuCSP(st.session_state.sudoku_grid)
-        inference = "forward_checking" if method == "Forward Checking" else "ac3"
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("Initial Grid:")
-            styled_df = create_styled_sudoku_df(csp.grid)
-            st.dataframe(styled_df, height=600)
-        
-        start_time = time.time()
-        solution = backtracking_with_inference(csp, inference=inference)
-        solve_time = time.time() - start_time
-        
-        with col2:
-            if solution:
-                st.write(f"Solution found in {solve_time:.6f} seconds:")
-                styled_df = create_styled_sudoku_df(solution)
+        try:
+            csp = SudokuCSP(st.session_state.sudoku_grid)
+            inference = "forward_checking" if method == "Forward Checking" else "ac3"
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("Initial Grid:")
+                styled_df = create_styled_sudoku_df(csp.grid)
                 st.dataframe(styled_df, height=600)
-            else:
-                st.error("No solution found!")
-                st.warning("Click 'Show Theory' to understand why no solution exists")
-                show_no_solution_theory()
+                
+                # Show initial domains
+                st.write("Initial Domains:")
+                domain_data = []
+                for square in csp.squares:
+                    if csp.grid[square] == 0:
+                        domain_data.append({
+                            'Cell': square,
+                            'Possible Values': sorted(list(csp.domains[square])),
+                            'Domain Size': len(csp.domains[square])
+                        })
+                if domain_data:
+                    st.dataframe(
+                        pd.DataFrame(domain_data)
+                        .style.background_gradient(subset=['Domain Size'])
+                    )
+            
+            start_time = time.time()
+            solution = backtracking_with_inference(csp, inference=inference)
+            solve_time = time.time() - start_time
+            
+            with col2:
+                if solution:
+                    st.success(f"Solution found in {solve_time:.6f} seconds!")
+                    styled_df = create_styled_sudoku_df(solution)
+                    st.dataframe(styled_df, height=600)
+                else:
+                    st.error("No solution found!")
+                    st.warning("This could be due to:")
+                    st.markdown("""
+                    1. **Domain Wipeout**: No valid values left for some cell
+                    2. **Constraint Violation**: Conflicting assignments
+                    3. **Invalid Initial State**: Starting puzzle is unsolvable
+                    """)
+                    
+                    # Show problematic cells
+                    conflicts = []
+                    for square in csp.squares:
+                        if square in csp.domains and len(csp.domains[square]) == 0:
+                            conflicts.append(square)
+                    
+                    if conflicts:
+                        st.write("Cells with empty domains:")
+                        st.write(conflicts)
+        
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            st.write("Please check your input puzzle format.")
 
 with tab4:
     st.markdown("""

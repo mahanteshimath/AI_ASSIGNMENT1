@@ -116,14 +116,92 @@ def _backtrack(assignment: Dict[str, int], csp: SudokuCSP) -> Optional[Dict[str,
     return None
 
 def _backtrack_fc(assignment: Dict[str, int], csp: SudokuCSP) -> Optional[Dict[str, int]]:
-    """Helper function for backtracking with forward checking"""
-    # ... implementation similar to _backtrack but with forward checking ...
-    pass
+    """Backtracking with forward checking"""
+    if len(assignment) == len(csp.squares):
+        return assignment
+    
+    var = _select_unassigned_variable(assignment, csp)
+    for value in _order_domain_values(var, assignment, csp):
+        if _is_consistent(var, value, assignment, csp):
+            # Save current domains
+            saved_domains = {k: v.copy() for k, v in csp.domains.items()}
+            
+            # Make assignment and update domains
+            assignment[var] = value
+            csp.domains[var] = {value}
+            
+            # Forward check
+            failure = False
+            for peer in csp.peers[var]:
+                if peer not in assignment and value in csp.domains[peer]:
+                    csp.domains[peer] = csp.domains[peer] - {value}
+                    if not csp.domains[peer]:  # Domain wipeout
+                        failure = True
+                        break
+            
+            if not failure:
+                result = _backtrack_fc(assignment, csp)
+                if result:
+                    return result
+            
+            # Restore domains and remove assignment
+            csp.domains = saved_domains
+            assignment.pop(var)
+            
+    return None
 
 def _backtrack_ac3(assignment: Dict[str, int], csp: SudokuCSP) -> Optional[Dict[str, int]]:
-    """Helper function for backtracking with AC3"""
-    # ... implementation similar to _backtrack but with AC3 ...
-    pass
+    """Backtracking with AC3"""
+    if len(assignment) == len(csp.squares):
+        return assignment
+    
+    var = _select_unassigned_variable(assignment, csp)
+    for value in _order_domain_values(var, assignment, csp):
+        if _is_consistent(var, value, assignment, csp):
+            # Save current domains
+            saved_domains = {k: v.copy() for k, v in csp.domains.items()}
+            
+            # Make assignment and update domains
+            assignment[var] = value
+            csp.domains[var] = {value}
+            
+            # Run AC3
+            queue = [(peer, var) for peer in csp.peers[var] if peer not in assignment]
+            failure = not _ac3(queue, csp)
+            
+            if not failure:
+                result = _backtrack_ac3(assignment, csp)
+                if result:
+                    return result
+            
+            # Restore domains and remove assignment
+            csp.domains = saved_domains
+            assignment.pop(var)
+    
+    return None
+
+def _ac3(queue: List[Tuple[str, str]], csp: SudokuCSP) -> bool:
+    """AC3 algorithm for constraint propagation"""
+    while queue:
+        (xi, xj) = queue.pop(0)
+        if _revise(xi, xj, csp):
+            if not csp.domains[xi]:
+                return False
+            # Add neighbors for further constraint propagation
+            for xk in csp.peers[xi]:
+                if xk != xj:
+                    queue.append((xk, xi))
+    return True
+
+def _revise(xi: str, xj: str, csp: SudokuCSP) -> bool:
+    """Revise the domain of xi with respect to xj"""
+    revised = False
+    for x in list(csp.domains[xi]):  # Make a copy since we'll modify domain
+        # If no value in xj's domain satisfies the constraint with x
+        if not any(y != x for y in csp.domains[xj]):
+            csp.domains[xi].remove(x)
+            revised = True
+    return revised
 
 def _select_unassigned_variable(assignment: Dict[str, int], csp: SudokuCSP) -> str:
     """Select an unassigned variable - MRV heuristic"""
