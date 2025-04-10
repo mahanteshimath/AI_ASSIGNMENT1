@@ -132,10 +132,9 @@ def backtracking_with_inference(csp: SudokuCSP, inference: str = 'forward_checki
         return (result, iterations)  # Return tuple of solution and iterations
     return None  # Return None if no solution found
 
-def evaluate_heuristics(num_puzzles: int = 2, runs_per_puzzle: int = 3) -> List[Dict]:
-    """Evaluate different heuristic combinations"""
+def evaluate_heuristics(puzzles: List[str], runs_per_puzzle: int = 3) -> List[Dict]:
+    """Evaluate different heuristic combinations on multiple puzzles"""
     results = []
-    puzzle = "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3.."
     
     heuristics = [
         ('Basic', None),
@@ -145,33 +144,35 @@ def evaluate_heuristics(num_puzzles: int = 2, runs_per_puzzle: int = 3) -> List[
     ]
     
     for name, heuristic in heuristics:
-        times = []
-        iterations_list = []
-        successes = 0
+        total_times = []
+        total_iterations = []
+        total_successes = 0
+        total_runs = len(puzzles) * runs_per_puzzle
         
-        for _ in range(runs_per_puzzle):
-            csp = SudokuCSP(puzzle)
-            start = time.time()
-            if heuristic:
-                result = backtracking_with_inference(csp, heuristic)
-            else:
-                result = backtracking_search(csp)
-            times.append(time.time() - start)
-            
-            if result:
-                successes += 1
-                iterations_list.append(result[1])  # Store iteration count
-            else:
-                iterations_list.append(0)  # Failed attempt
+        for puzzle in puzzles:
+            for _ in range(runs_per_puzzle):
+                csp = SudokuCSP(puzzle)
+                start = time.time()
+                if heuristic:
+                    result = backtracking_with_inference(csp, heuristic)
+                else:
+                    result = backtracking_search(csp)
+                total_times.append(time.time() - start)
+                
+                if result:
+                    total_successes += 1
+                    total_iterations.append(result[1])
+                else:
+                    total_iterations.append(0)
         
-        success_rate = (successes / runs_per_puzzle) * 100
-        avg_iterations = sum(iterations_list) / len(iterations_list) if iterations_list else 0
+        success_rate = (total_successes / total_runs) * 100
+        avg_iterations = sum(total_iterations) / len(total_iterations) if total_iterations else 0
         
         results.append({
             'Algorithm': name,
-            'Avg Time': sum(times) / len(times),
-            'Min Time': min(times),
-            'Max Time': max(times),
+            'Avg Time': sum(total_times) / len(total_times),
+            'Min Time': min(total_times),
+            'Max Time': max(total_times),
             'Avg Iterations': avg_iterations,
             'Success Rate': success_rate
         })
