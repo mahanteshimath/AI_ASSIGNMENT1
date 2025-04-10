@@ -63,7 +63,14 @@ with tab1:
         
         with col1:
             st.write("Current Grid:")
-            csp.display()
+            grid_display = ""
+            for r in 'ABCDEFGHI':
+                row = ''.join(f"{csp.grid[r+c]:2}" + ('|' if c in '36' else '') 
+                            for c in '123456789')
+                grid_display += row + "\n"
+                if r in 'CF':
+                    grid_display += '+'.join(['-' * 6] * 3) + "\n"
+            st.text(grid_display)
             
         with col2:
             st.write("Domain sizes for empty cells:")
@@ -83,7 +90,14 @@ with tab2:
         
         with col1:
             st.write("Initial Grid:")
-            csp.display()
+            grid_display = ""
+            for r in 'ABCDEFGHI':
+                row = ''.join(f"{csp.grid[r+c]:2}" + ('|' if c in '36' else '') 
+                            for c in '123456789')
+                grid_display += row + "\n"
+                if r in 'CF':
+                    grid_display += '+'.join(['-' * 6] * 3) + "\n"
+            st.text(grid_display)
         
         start_time = time.time()
         solution = backtracking_search(csp)
@@ -92,7 +106,14 @@ with tab2:
         with col2:
             if solution:
                 st.write(f"Solution found in {solve_time:.6f} seconds:")
-                csp.display(solution)
+                grid_display = ""
+                for r in 'ABCDEFGHI':
+                    row = ''.join(f"{solution[r+c]:2}" + ('|' if c in '36' else '') 
+                                for c in '123456789')
+                    grid_display += row + "\n"
+                    if r in 'CF':
+                        grid_display += '+'.join(['-' * 6] * 3) + "\n"
+                st.text(grid_display)
             else:
                 st.error("No solution found!")
 
@@ -116,7 +137,14 @@ with tab3:
         col1, col2 = st.columns(2)
         with col1:
             st.write("Initial Grid:")
-            csp.display()
+            grid_display = ""
+            for r in 'ABCDEFGHI':
+                row = ''.join(f"{csp.grid[r+c]:2}" + ('|' if c in '36' else '') 
+                            for c in '123456789')
+                grid_display += row + "\n"
+                if r in 'CF':
+                    grid_display += '+'.join(['-' * 6] * 3) + "\n"
+            st.text(grid_display)
         
         start_time = time.time()
         solution = backtracking_with_inference(csp, inference=inference)
@@ -125,7 +153,14 @@ with tab3:
         with col2:
             if solution:
                 st.write(f"Solution found in {solve_time:.6f} seconds:")
-                csp.display(solution)
+                grid_display = ""
+                for r in 'ABCDEFGHI':
+                    row = ''.join(f"{solution[r+c]:2}" + ('|' if c in '36' else '') 
+                                for c in '123456789')
+                    grid_display += row + "\n"
+                    if r in 'CF':
+                        grid_display += '+'.join(['-' * 6] * 3) + "\n"
+                st.text(grid_display)
             else:
                 st.error("No solution found!")
 
