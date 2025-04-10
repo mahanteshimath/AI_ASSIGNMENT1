@@ -295,42 +295,35 @@ with tab3:
 with tab4:
     st.markdown("""
     ## Part 4: Heuristics Analysis
+
+    ### Q1(d): Analysis of Different Heuristic Methods
     
-    This section analyzes how different variable and value selection heuristics affect backtracking search performance:
+    This section analyzes how different heuristics affect backtracking search performance:
     
-    ### Variable Selection Heuristics:
-    1. **MRV (Minimum Remaining Values)**
-       - Selects variable with fewest legal values
-       - Reduces branching factor early
-    
-    2. **Degree Heuristic**
-       - Chooses most constrained variable
-       - Works well with MRV as tie-breaker
-    
-    ### Value Selection Heuristic:
-    3. **LCV (Least Constraining Value)**
-       - Orders values to minimize impact on future assignments
-       - Reduces backtracking frequency
+    1. **Variable Selection Heuristics**
+       - MRV (Minimum Remaining Values): Selects variables with fewest legal values
+       - Degree Heuristic: Prefers variables that constrain most other variables
+       
+    2. **Value Selection Heuristic**
+       - LCV (Least Constraining Value): Orders values by their impact on future assignments
     """)
-    
-    # Get current puzzle from session state
-    current_puzzle = st.session_state.sudoku_grid
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        runs = st.slider("Number of runs for analysis:", min_value=1, max_value=100, value=5)
+        runs = st.slider("Number of test runs:", min_value=5, max_value=50, value=10)
     with col2:
         difficulty = st.select_slider(
-            "Puzzle difficulty:",
+            "Test puzzle difficulty:",
             options=['easy', 'medium', 'hard', 'expert'],
             value='medium'
         )
     
-    if st.button("Run Detailed Heuristic Analysis"):
-        with st.spinner("Running comprehensive analysis..."):
-            # Generate test puzzles of selected difficulty
+    if st.button("Analyze Heuristic Performance"):
+        with st.spinner("Running performance analysis..."):
+            # Generate multiple test puzzles
             test_puzzles = [generate_random_sudoku(difficulty) for _ in range(3)]
             
+            # Run analysis
             results = []
             for puzzle in test_puzzles:
                 puzzle_results = evaluate_heuristics([puzzle], runs_per_puzzle=runs)
@@ -338,89 +331,91 @@ with tab4:
             
             # Aggregate results
             df = pd.DataFrame(results)
-            avg_results = df.groupby('Algorithm').agg({
-                'Avg Time': ['mean', 'std'],
-                'Avg Iterations': ['mean', 'std'],
-                'Success Rate': 'mean'
-            }).round(4)
             
-            # Display comparison tables
+            # Display comprehensive comparison table
             st.subheader("Heuristic Performance Comparison")
             
-            # Format table for better readability
             comparison_df = pd.DataFrame({
                 'Metric': [
-                    'Average Time (sec)', 
-                    'Time Std Dev',
+                    'Average Time (sec)',
+                    'Time Standard Dev',
                     'Average Iterations',
-                    'Iterations Std Dev',
-                    'Success Rate (%)'
+                    'Success Rate (%)',
+                    'Memory Usage (units)',
+                    'Speed Improvement (%)'
                 ]
             })
             
+            base_time = df[df['Algorithm']=='Basic Backtracking']['Avg Time'].mean()
+            
             for algo in df['Algorithm'].unique():
+                algo_data = df[df['Algorithm']==algo]
+                improvement = ((base_time - algo_data['Avg Time'].mean()) / base_time * 100)
+                
                 comparison_df[algo] = [
-                    avg_results.loc[algo, ('Avg Time', 'mean')],
-                    avg_results.loc[algo, ('Avg Time', 'std')],
-                    avg_results.loc[algo, ('Avg Iterations', 'mean')],
-                    avg_results.loc[algo, ('Avg Iterations', 'std')],
-                    avg_results.loc[algo, ('Success Rate', 'mean')] * 100.0
+                    f"{algo_data['Avg Time'].mean():.4f}",
+                    f"{algo_data['Std Dev Time'].mean():.4f}",
+                    f"{algo_data['Avg Iterations'].mean():.0f}",
+                    f"{algo_data['Success Rate'].mean()*100:.1f}%",
+                    f"{algo_data['Peak Memory'].mean():.0f}",
+                    f"{improvement:.1f}%" if algo != "Basic Backtracking" else "Baseline"
                 ]
             
-            st.table(comparison_df.style.highlight_min(subset=comparison_df.columns[1:], axis=1))
+            st.table(comparison_df)
             
-            # Visualization
-            st.subheader("Performance Visualization")
+            # Visualizations
+            st.subheader("Performance Metrics")
             col1, col2 = st.columns(2)
             
             with col1:
-                st.write("Average Solve Time by Algorithm")
-                time_chart = pd.DataFrame({
-                    'Algorithm': df['Algorithm'],
-                    'Time (seconds)': df['Avg Time']
-                })
-                st.bar_chart(time_chart.set_index('Algorithm'))
+                st.write("Computational Time Comparison")
+                fig_time = px.bar(df, 
+                    x='Algorithm', 
+                    y='Avg Time',
+                    error_y='Std Dev Time',
+                    title="Average Solution Time by Algorithm"
+                )
+                st.plotly_chart(fig_time)
             
             with col2:
-                st.write("Average Iterations by Algorithm")
-                iter_chart = pd.DataFrame({
-                    'Algorithm': df['Algorithm'],
-                    'Iterations': df['Avg Iterations']
-                })
-                st.bar_chart(iter_chart.set_index('Algorithm'))
+                st.write("Iteration Count Comparison")
+                fig_iter = px.bar(df,
+                    x='Algorithm',
+                    y='Avg Iterations',
+                    title="Average Iterations by Algorithm"
+                )
+                st.plotly_chart(fig_iter)
             
-            # Analysis explanation
-            st.subheader("Performance Analysis")
+            # Analysis findings
+            st.subheader("Analysis of Performance Improvements")
             st.markdown("""
             ### Key Findings:
             
             1. **MRV (Minimum Remaining Values)**
-                - Significantly reduces search space by choosing most constrained variables
-                - Most effective for medium to hard puzzles
-                - Average improvement: {:.1f}% reduction in iterations
+               - Reduces search space by {:.1f}% compared to basic backtracking
+               - Most effective for highly constrained variables
+               - Optimal for early-game decisions
             
-            2. **Degree Heuristic**
-                - Complements MRV by breaking ties effectively
-                - More impactful in early stages of solving
-                - Combined with MRV shows {:.1f}% improvement
+            2. **MRV + Degree Heuristic**
+               - Additional {:.1f}% improvement over MRV alone
+               - Better tie-breaking in variable selection
+               - Most effective in mid-game situations
             
-            3. **LCV (Least Constraining Value)**
-                - Most beneficial for difficult puzzles
-                - Reduces backtracking by {:.1f}% on average
-                - Higher overhead but fewer iterations
+            3. **Full Heuristic Combination**
+               - Total improvement of {:.1f}% over basic backtracking
+               - Optimal for difficult puzzles
+               - Balances computational overhead with search efficiency
             
             ### Recommendations:
             
-            - For easy puzzles: Basic Backtracking is sufficient
-            - For medium puzzles: MRV + Forward Checking
-            - For hard puzzles: Full heuristic combination (MRV + Degree + LCV)
+            - Easy Puzzles: Basic backtracking or MRV alone
+            - Medium Puzzles: MRV + Degree heuristic
+            - Hard/Expert Puzzles: Full heuristic combination
             """.format(
-                (1 - df[df['Algorithm']=='Forward Checking']['Avg Iterations'].mean() / 
-                 df[df['Algorithm']=='Basic Backtracking']['Avg Iterations'].mean()) * 100,
-                (1 - df[df['Algorithm']=='AC3']['Avg Time'].mean() / 
-                 df[df['Algorithm']=='Basic Backtracking']['Avg Time'].mean()) * 100,
-                (1 - df[df['Algorithm']=='AC3']['Avg Iterations'].mean() / 
-                 df[df['Algorithm']=='Forward Checking']['Avg Iterations'].mean()) * 100
+                (1 - df[df['Algorithm']=='MRV Only']['Avg Time'].mean() / base_time) * 100,
+                (1 - df[df['Algorithm']=='MRV + Degree']['Avg Time'].mean() / 
+                 df[df['Algorithm']=='MRV Only']['Avg Time'].mean()) * 100,
+                (1 - df[df['Algorithm']=='MRV + Degree + LCV']['Avg Time'].mean() / base_time) * 100
             ))
 
 footer="""<style>

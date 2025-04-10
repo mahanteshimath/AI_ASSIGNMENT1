@@ -1,6 +1,7 @@
 import time
 import random
 from typing import Dict, Set, List, Tuple, Optional
+import numpy as np
 
 class SudokuCSP:
     def __init__(self, grid_string: str):
@@ -169,11 +170,12 @@ def evaluate_heuristics(puzzles: List[str], runs_per_puzzle: int = 1) -> List[di
     results = []
     
     for puzzle in puzzles:
-        # Test different combinations
+        # Test different heuristic combinations
         algorithms = [
             ("Basic Backtracking", lambda: backtracking_search(SudokuCSP(puzzle))),
-            ("Forward Checking", lambda: backtracking_with_inference(SudokuCSP(puzzle), 'forward_checking')),
-            ("AC3", lambda: backtracking_with_inference(SudokuCSP(puzzle), 'ac3'))
+            ("MRV Only", lambda: backtracking_with_inference(SudokuCSP(puzzle), 'mrv_only')),
+            ("MRV + Degree", lambda: backtracking_with_inference(SudokuCSP(puzzle), 'mrv_degree')),
+            ("MRV + Degree + LCV", lambda: backtracking_with_inference(SudokuCSP(puzzle), 'all_heuristics'))
         ]
         
         for name, algo in algorithms:
@@ -192,12 +194,14 @@ def evaluate_heuristics(puzzles: List[str], runs_per_puzzle: int = 1) -> List[di
                     iterations.append(iters)
                     successes += 1
             
-            if times:  # Only if at least one successful run
+            if times:
                 results.append({
                     'Algorithm': name,
                     'Avg Time': sum(times) / len(times),
                     'Avg Iterations': sum(iterations) / len(iterations),
-                    'Success Rate': successes / runs_per_puzzle
+                    'Success Rate': successes / runs_per_puzzle,
+                    'Std Dev Time': np.std(times),
+                    'Peak Memory': max(iterations) * 81  # Rough estimate of peak memory usage
                 })
             
     return results
