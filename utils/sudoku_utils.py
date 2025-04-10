@@ -146,20 +146,34 @@ def evaluate_heuristics(num_puzzles: int = 2, runs_per_puzzle: int = 3) -> List[
     
     for name, heuristic in heuristics:
         times = []
+        iterations_list = []
+        successes = 0
+        
         for _ in range(runs_per_puzzle):
             csp = SudokuCSP(puzzle)
             start = time.time()
             if heuristic:
-                backtracking_with_inference(csp, heuristic)
+                result = backtracking_with_inference(csp, heuristic)
             else:
-                backtracking_search(csp)
+                result = backtracking_search(csp)
             times.append(time.time() - start)
+            
+            if result:
+                successes += 1
+                iterations_list.append(result[1])  # Store iteration count
+            else:
+                iterations_list.append(0)  # Failed attempt
+        
+        success_rate = (successes / runs_per_puzzle) * 100
+        avg_iterations = sum(iterations_list) / len(iterations_list) if iterations_list else 0
         
         results.append({
             'Algorithm': name,
             'Avg Time': sum(times) / len(times),
             'Min Time': min(times),
-            'Max Time': max(times)
+            'Max Time': max(times),
+            'Avg Iterations': avg_iterations,
+            'Success Rate': success_rate
         })
     
     return results
