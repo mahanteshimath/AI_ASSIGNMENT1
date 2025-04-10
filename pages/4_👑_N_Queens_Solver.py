@@ -7,6 +7,11 @@ import plotly.graph_objects as go
 from utils.queens_utils import NQueensSolver
 
 st.set_page_config(page_title="N-Queens Solver", page_icon="👑", layout="wide")
+st.logo(
+    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+    link="https://www.linkedin.com/in/mahantesh-hiremath/",
+    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
+)
 
 st.title("N-Queens Problem Solver")
 st.markdown("""
