@@ -338,7 +338,7 @@ with tab4:
             comparison_df = pd.DataFrame({
                 'Metric': [
                     'Average Time (sec)',
-                    'Time Standard Dev',
+                    'Standard Deviation',
                     'Average Iterations',
                     'Success Rate (%)',
                     'Memory Usage (units)',
@@ -354,7 +354,7 @@ with tab4:
                 
                 comparison_df[algo] = [
                     f"{algo_data['Avg Time'].mean():.4f}",
-                    f"{algo_data['Std Dev Time'].mean():.4f}",
+                    f"{np.std(algo_data['Avg Time']):.4f}",
                     f"{algo_data['Avg Iterations'].mean():.0f}",
                     f"{algo_data['Success Rate'].mean()*100:.1f}%",
                     f"{algo_data['Peak Memory'].mean():.0f}",
@@ -369,22 +369,16 @@ with tab4:
             
             with col1:
                 st.write("Computational Time Comparison")
-                fig_time = px.bar(df, 
-                    x='Algorithm', 
-                    y='Avg Time',
-                    error_y='Std Dev Time',
-                    title="Average Solution Time by Algorithm"
-                )
-                st.plotly_chart(fig_time)
+                time_data = pd.DataFrame({
+                    'Algorithm': df['Algorithm'],
+                    'Time (seconds)': df['Avg Time'],
+                    'Standard Deviation': df.groupby('Algorithm')['Avg Time'].transform(np.std)
+                })
+                st.bar_chart(time_data.set_index('Algorithm')['Time (seconds)'])
             
             with col2:
                 st.write("Iteration Count Comparison")
-                fig_iter = px.bar(df,
-                    x='Algorithm',
-                    y='Avg Iterations',
-                    title="Average Iterations by Algorithm"
-                )
-                st.plotly_chart(fig_iter)
+                st.bar_chart(df.set_index('Algorithm')['Avg Iterations'])
             
             # Analysis findings
             st.subheader("Analysis of Performance Improvements")
