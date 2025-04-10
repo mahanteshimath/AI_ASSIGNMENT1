@@ -49,7 +49,7 @@ with col1:
                 result = solver.hill_climbing()
             
             # Display results
-            st.success(f"Solution found in {result['time']:.4f} seconds")
+            st.write(f"Solution found in {result['time']:.4f} seconds")
             st.write(f"Iterations: {result['iterations']}")
             st.write(f"Final conflicts: {result['conflicts']}")
             
@@ -79,7 +79,7 @@ with col1:
                             y=[i + 0.5],
                             mode='text',
                             text=['♕'],
-                            textfont=dict(size=32, color='red'),  # Increased size from 24 to 32 and added red color
+                            textfont=dict(size=32, color='#DAA520'),  # Changed color to dark yellow (goldenrod)
                             showlegend=False
                         ))
             

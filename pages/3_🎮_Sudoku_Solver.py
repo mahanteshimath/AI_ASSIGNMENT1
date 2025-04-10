@@ -17,11 +17,6 @@ st.logo(
     icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
 )
 
-st.logo(
-    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
-    link="https://www.linkedin.com/in/mahantesh-hiremath/",
-    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
-)
 
 st.title("Sudoku Puzzle Solver")
 
@@ -211,12 +206,13 @@ with tab2:
             st.dataframe(styled_df, height=600)
         
         start_time = time.time()
-        solution = backtracking_search(csp)
+        solution, iterations = backtracking_search(csp)  # Modified to return iterations
         solve_time = time.time() - start_time
         
         with col2:
             if solution:
-                st.write(f"Solution found in {solve_time:.6f} seconds:")
+                st.write(f"Solution found in {solve_time:.6f} seconds")
+                st.write(f"Number of iterations: {iterations}")
                 styled_df = create_styled_sudoku_df(solution)
                 st.dataframe(styled_df, height=600)
             else:
@@ -263,12 +259,13 @@ with tab3:
                     )
             
             start_time = time.time()
-            solution = backtracking_with_inference(csp, inference=inference)
+            solution, iterations = backtracking_with_inference(csp, inference=inference)  # Modified to return iterations
             solve_time = time.time() - start_time
             
             with col2:
                 if solution:
-                    st.success(f"Solution found in {solve_time:.6f} seconds!")
+                    st.write(f"Solution found in {solve_time:.6f} seconds!")
+                    st.write(f"Number of iterations: {iterations}")
                     styled_df = create_styled_sudoku_df(solution)
                     st.dataframe(styled_df, height=600)
                 else:
@@ -310,7 +307,9 @@ with tab4:
             # Display results as a styled dataframe
             st.subheader("Performance Comparison")
             df = pd.DataFrame(results)
-            st.dataframe(df.style.highlight_min(subset=['Avg Time']))
+            # Add iterations column to display
+            df = df[['Algorithm', 'Avg Time', 'Avg Iterations', 'Success Rate']]
+            st.dataframe(df.style.highlight_min(subset=['Avg Time', 'Avg Iterations']))
             
             # Plot comparison
             st.subheader("Visual Comparison")
