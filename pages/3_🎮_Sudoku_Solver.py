@@ -115,6 +115,47 @@ def generate_random_sudoku(difficulty='medium'):
     
     return ''.join(puzzle)
 
+def show_explanation_dialog():
+    st.markdown("""
+    ### Why No Solution Exists
+    
+    When using constraint propagation (Forward Checking or AC-3), a solution may not exist due to:
+    
+    1. **Domain Wipeout**
+    - When a variable's domain becomes empty (no valid values remain)
+    - This occurs when all potential values violate constraints
+    - Example: If a cell needs a value 1-9, but all numbers conflict with existing assignments
+    
+    2. **Forward Checking Failure**
+    - Assigning a value eliminates all options for a future variable
+    - This is detected early, preventing wasteful search
+    - Example: If placing '5' removes all valid values for a neighbor cell
+    
+    3. **Arc Inconsistency (AC-3)**
+    - No value in one variable's domain satisfies constraints with another
+    - Detected through constraint propagation between variable pairs
+    - Example: Row/column/box constraints cannot be satisfied simultaneously
+    
+    4. **Initial State Issues**
+    - The input puzzle violates Sudoku rules
+    - Multiple instances of same number in row/column/box
+    - Too few clues to ensure a unique solution
+    
+    ### Visual Example:
+    ```
+    Initial State:      After Assignment:
+    [1][2][?]          [1][2][3]
+    [3][?][?]    →     [3][x][?]
+    [2][?][?]          [2][?][?]
+    ```
+    Domain wipeout: Middle cell marked 'x' has no valid values because:
+    - Can't be 1 (in row)
+    - Can't be 2 (in row)
+    - Can't be 3 (in row)
+    - Can't be 2 (in column)
+    - Can't be 3 (in column)
+    """)
+
 with tab1:
     st.markdown("""
     ## Part 1: CSP Representation
@@ -240,6 +281,9 @@ with tab3:
                 st.dataframe(styled_df, height=600)
             else:
                 st.error("No solution found!")
+                st.warning("Click 'Show Theory' to understand why no solution exists")
+                if st.button("Show Theory"):
+                    show_explanation_dialog()
 
 with tab4:
     st.markdown("""
