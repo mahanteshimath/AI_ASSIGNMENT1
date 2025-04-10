@@ -77,24 +77,32 @@ def backtracking_with_inference(csp: SudokuCSP, inference: str = 'forward_checki
     def backtrack(assignment: Dict[str, int], domains: Dict[str, Set[str]], iterations: int = 0) -> Optional[Tuple[Dict[str, int], int]]:
         if len(assignment) == len(csp.squares):
             return assignment, iterations
-            
+        
         var = select_unassigned_variable(assignment, csp)
-        for value in csp.domains[var]:
+        # Sort values by least constraining value
+        values = sorted(domains[var], key=lambda x: sum(1 for p in csp.peers[var] if x in domains[p]))
+        
+        for value in values:
             if is_consistent(var, int(value), assignment, csp):
                 assignment[var] = int(value)
                 
+                # Make a copy of domains for inference
+                curr_domains = {k: set(v) for k, v in domains.items()}
+                
                 if inference == 'forward_checking':
-                    new_domains = forward_checking(var, int(value), domains, assignment)
+                    new_domains = forward_checking(var, int(value), curr_domains, assignment)
                 else:  # AC3
-                    new_domains = ac3(csp, var, int(value), domains.copy())
-                    
+                    new_domains = ac3(csp, var, int(value), curr_domains)
+                
                 if new_domains is not None:
                     result = backtrack(assignment, new_domains, iterations + 1)
                     if result:
                         return result
+                
                 del assignment[var]
-        return None
         
+        return None
+    
     return backtrack({s: csp.grid[s] for s in csp.squares if csp.grid[s] != 0}, csp.domains.copy())
 
 def select_unassigned_variable(assignment: Dict[str, int], csp: SudokuCSP) -> str:
@@ -111,27 +119,49 @@ def is_consistent(var: str, value: int, assignment: Dict[str, int], csp: SudokuC
 
 def ac3(csp: SudokuCSP, var: str, value: int, domains: Dict[str, Set[str]]) -> Optional[Dict[str, Set[str]]]:
     """AC3 algorithm for constraint propagation."""
-    queue = [(peer, var) for peer in csp.peers[var]]
-    domains = domains.copy()
+    # Create a deep copy of domains to avoid modifying original
+    domains = {k: set(v) for k, v in domains.items()}
     domains[var] = {str(value)}
+    
+    # Initialize queue with all arcs between var and its peers
+    queue = []
+    for peer in csp.peers[var]:
+        queue.append((peer, var))  # Add arc from peer to var
+        # Also add arcs between peers to maintain consistency
+        for other_peer in csp.peers[peer]:
+            if other_peer != var:
+                queue.append((peer, other_peer))
     
     while queue:
         (x1, x2) = queue.pop(0)
         if revise(csp, x1, x2, domains):
             if not domains[x1]:
-                return None
+                return None  # No solution exists
+            # Add all neighbors of x1 except x2 to queue
             for peer in csp.peers[x1] - {x2}:
                 queue.append((peer, x1))
+    
     return domains
 
 def revise(csp: SudokuCSP, x1: str, x2: str, domains: Dict[str, Set[str]]) -> bool:
-    """Revise domains."""
+    """Revise domains - return True if domain of x1 was changed."""
     revised = False
-    for d1 in set(domains[x1]):
-        if all(not is_consistent(x2, int(d2), {x1: int(d1)}, csp) 
-               for d2 in domains[x2]):
+    
+    # Make copy of domain to avoid modifying during iteration
+    x1_domain = set(domains[x1])
+    
+    for d1 in x1_domain:
+        # Check if there's any value in x2's domain that allows d1
+        valid = False
+        for d2 in domains[x2]:
+            if d1 != d2:  # Different values satisfy the constraint
+                valid = True
+                break
+        
+        if not valid:
             domains[x1].remove(d1)
             revised = True
+    
     return revised
 
 def evaluate_heuristics(puzzles: List[str], runs_per_puzzle: int = 1) -> List[dict]:
