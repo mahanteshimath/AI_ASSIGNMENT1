@@ -6,11 +6,12 @@ st.set_page_config(
     layout="wide"
 )
 
-st.logo(
-    image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
-    link="https://www.linkedin.com/in/mahantesh-hiremath/",
-    icon_image="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg"
-)
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
+        width=200
+    )
 
 st.title("Artificial Intelligence– A1 and A2 (IITJ)")
 st.markdown("**Prepared by:** Mahantesh Hiremath- G24AIT2178")
@@ -24,17 +25,28 @@ st.markdown("""
 
 2. **🤝 City Meetup Search**
    - Find optimal meeting points between two cities
-   - Compare different search algorithms and heuristics
-   - Interactive map visualization
+   - Compare different search algorithms (A* and Greedy Best-First Search)
+   - Interactive map visualization with real Indian cities data
 
 3. **🎮 Sudoku Solver**
-   - Solve Sudoku puzzles using backtracking algorithm
-   - Visualize the solving process
-   - User-friendly interface for inputting puzzles
+   - Solve Sudoku puzzles using CSP and backtracking
+   - Visualize the solving process step-by-step
+   - Interactive grid input interface
 
-
+4. **👑 N-Queens Solver**
+   - Solve N-Queens problem using Simulated Annealing and Hill Climbing
+   - Configure board size (4-20)
+   - Interactive visualization of solutions
 
 Use the sidebar to navigate between sections.
+""")
+
+st.markdown("""
+### Technical Details:
+- Built with Streamlit, NumPy, Pandas, and Plotly
+- Implements various AI search algorithms and optimization techniques
+- Interactive visualizations and real-time updates
+- Constraint satisfaction problem solving
 """)
 
 st.markdown("""
@@ -42,6 +54,7 @@ st.markdown("""
 1. 📦 Warehouse Logistics
 2. 🤝 City Meetup
 3. 🎮 Sudoku Solver
+4. 👑 N-Queens Solver
 """)
 
 st.markdown(
