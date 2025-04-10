@@ -74,7 +74,7 @@ with col1:
                             y=[i + 0.5],
                             mode='text',
                             text=['♕'],
-                            textfont=dict(size=24),
+                            textfont=dict(size=32, color='red'),  # Increased size from 24 to 32 and added red color
                             showlegend=False
                         ))
             
