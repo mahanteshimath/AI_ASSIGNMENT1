@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import time
 import pandas as pd
+import random
 from utils.sudoku_utils import (
     SudokuCSP,
     backtracking_search,
@@ -43,6 +44,77 @@ tab1, tab2, tab3, tab4 = st.tabs([
 if 'sudoku_grid' not in st.session_state:
     st.session_state.sudoku_grid = "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3.."
 
+def create_styled_sudoku_df(grid_dict):
+    """Convert grid dict to styled dataframe"""
+    # Create 9x9 DataFrame
+    data = np.zeros((9, 9), dtype=int)
+    rows = 'ABCDEFGHI'
+    cols = '123456789'
+    
+    for i, r in enumerate(rows):
+        for j, c in enumerate(cols):
+            data[i][j] = grid_dict[r + c]
+    
+    df = pd.DataFrame(data, columns=list(range(1, 10)), index=list(rows))
+    
+    # Style the dataframe
+    def color_cells(val):
+        if val == 0:
+            color = '#f4f4f4'  # Light gray for empty cells
+        else:
+            color = '#e6f3ff'  # Light blue for filled cells
+        return f'background-color: {color}; color: black; font-weight: bold; font-size: 18px; text-align: center'
+    
+    styled_df = df.style.apply(lambda x: [color_cells(v) for v in x], axis=1)
+    styled_df.set_properties(**{
+        'width': '60px',
+        'height': '60px',
+        'border': '2px solid #000'
+    })
+    
+    return styled_df
+
+def generate_random_sudoku(difficulty='medium'):
+    """Generate random solvable Sudoku puzzle"""
+    # Difficulty settings (percentage of cells to remove)
+    difficulty_levels = {
+        'easy': 0.4,
+        'medium': 0.5,
+        'hard': 0.6,
+        'expert': 0.7
+    }
+    
+    # Start with a solved Sudoku
+    base = 3
+    side = base * base
+    
+    def pattern(r,c): 
+        return (base*(r%base)+r//base+c)%side
+
+    def shuffle(s): 
+        return random.sample(s,len(s)) 
+    
+    # Generate solved puzzle
+    rows = [g*base + r for g in shuffle(range(base)) for r in shuffle(range(base))] 
+    cols = [g*base + c for g in shuffle(range(base)) for c in shuffle(range(base))]
+    nums = shuffle(range(1,base*base+1))
+    
+    board = [[nums[pattern(r,c)] for c in cols] for r in rows]
+    
+    # Convert to string format
+    solved = ''.join([str(board[i][j]) for i in range(9) for j in range(9)])
+    
+    # Create puzzle by removing numbers
+    cells = list(range(81))
+    random.shuffle(cells)
+    remove_count = int(81 * difficulty_levels[difficulty])
+    
+    puzzle = list(solved)
+    for i in range(remove_count):
+        puzzle[cells[i]] = '.'
+    
+    return ''.join(puzzle)
+
 with tab1:
     st.markdown("""
     ## Part 1: CSP Representation
@@ -52,31 +124,60 @@ with tab1:
     - **Constraints**: No number repeats in any row, column, or 3x3 box
     """)
     
-    # Input grid visualization
-    st.subheader("Initial Sudoku Grid")
-    grid_str = st.text_input("Enter Sudoku puzzle (use dots for empty cells):", 
-                            value=st.session_state.sudoku_grid)
+    col1, col2 = st.columns([2, 1])
     
-    if st.button("Display CSP Representation"):
-        csp = SudokuCSP(grid_str)
-        col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Initial Sudoku Grid")
+        input_method = st.radio(
+            "Choose input method:",
+            ["Generate Random Puzzle", "Enter Custom Puzzle"]
+        )
         
-        with col1:
-            st.write("Current Grid:")
-            grid_display = ""
-            for r in 'ABCDEFGHI':
-                row = ''.join(f"{csp.grid[r+c]:2}" + ('|' if c in '36' else '') 
-                            for c in '123456789')
-                grid_display += row + "\n"
-                if r in 'CF':
-                    grid_display += '+'.join(['-' * 6] * 3) + "\n"
-            st.text(grid_display)
-            
-        with col2:
+        if input_method == "Generate Random Puzzle":
+            difficulty = st.select_slider(
+                "Select difficulty level:",
+                options=['easy', 'medium', 'hard', 'expert'],
+                value='medium'
+            )
+            if st.button("Generate New Puzzle"):
+                st.session_state.sudoku_grid = generate_random_sudoku(difficulty)
+        else:
+            st.session_state.sudoku_grid = st.text_input(
+                "Enter Sudoku puzzle (use dots for empty cells):", 
+                value=st.session_state.sudoku_grid
+            )
+    
+    with col2:
+        st.markdown("""
+        ### How to Input:
+        - Use dots (.) for empty cells
+        - Enter digits (1-9) for filled cells
+        - No spaces needed
+        - Must be 81 characters long
+        """)
+    
+    # Display current grid
+    if st.session_state.sudoku_grid:
+        csp = SudokuCSP(st.session_state.sudoku_grid)
+        st.write("Current Grid:")
+        styled_df = create_styled_sudoku_df(csp.grid)
+        st.dataframe(styled_df, height=600)
+        
+        if st.button("Display CSP Representation"):
             st.write("Domain sizes for empty cells:")
+            domain_data = []
             for square in csp.squares:
                 if csp.grid[square] == 0:
-                    st.write(f"{square}: {len(csp.domains[square])} possible values")
+                    domain_data.append({
+                        'Cell': square,
+                        'Possible Values': sorted(list(csp.domains[square])),
+                        'Domain Size': len(csp.domains[square])
+                    })
+            if domain_data:
+                st.dataframe(
+                    pd.DataFrame(domain_data)
+                    .style.background_gradient(subset=['Domain Size'])
+                )
 
 with tab2:
     st.markdown("""
@@ -90,14 +191,8 @@ with tab2:
         
         with col1:
             st.write("Initial Grid:")
-            grid_display = ""
-            for r in 'ABCDEFGHI':
-                row = ''.join(f"{csp.grid[r+c]:2}" + ('|' if c in '36' else '') 
-                            for c in '123456789')
-                grid_display += row + "\n"
-                if r in 'CF':
-                    grid_display += '+'.join(['-' * 6] * 3) + "\n"
-            st.text(grid_display)
+            styled_df = create_styled_sudoku_df(csp.grid)
+            st.dataframe(styled_df, height=600)
         
         start_time = time.time()
         solution = backtracking_search(csp)
@@ -106,14 +201,8 @@ with tab2:
         with col2:
             if solution:
                 st.write(f"Solution found in {solve_time:.6f} seconds:")
-                grid_display = ""
-                for r in 'ABCDEFGHI':
-                    row = ''.join(f"{solution[r+c]:2}" + ('|' if c in '36' else '') 
-                                for c in '123456789')
-                    grid_display += row + "\n"
-                    if r in 'CF':
-                        grid_display += '+'.join(['-' * 6] * 3) + "\n"
-                st.text(grid_display)
+                styled_df = create_styled_sudoku_df(solution)
+                st.dataframe(styled_df, height=600)
             else:
                 st.error("No solution found!")
 
@@ -137,14 +226,8 @@ with tab3:
         col1, col2 = st.columns(2)
         with col1:
             st.write("Initial Grid:")
-            grid_display = ""
-            for r in 'ABCDEFGHI':
-                row = ''.join(f"{csp.grid[r+c]:2}" + ('|' if c in '36' else '') 
-                            for c in '123456789')
-                grid_display += row + "\n"
-                if r in 'CF':
-                    grid_display += '+'.join(['-' * 6] * 3) + "\n"
-            st.text(grid_display)
+            styled_df = create_styled_sudoku_df(csp.grid)
+            st.dataframe(styled_df, height=600)
         
         start_time = time.time()
         solution = backtracking_with_inference(csp, inference=inference)
@@ -153,14 +236,8 @@ with tab3:
         with col2:
             if solution:
                 st.write(f"Solution found in {solve_time:.6f} seconds:")
-                grid_display = ""
-                for r in 'ABCDEFGHI':
-                    row = ''.join(f"{solution[r+c]:2}" + ('|' if c in '36' else '') 
-                                for c in '123456789')
-                    grid_display += row + "\n"
-                    if r in 'CF':
-                        grid_display += '+'.join(['-' * 6] * 3) + "\n"
-                st.text(grid_display)
+                styled_df = create_styled_sudoku_df(solution)
+                st.dataframe(styled_df, height=600)
             else:
                 st.error("No solution found!")
 
