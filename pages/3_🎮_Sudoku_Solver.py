@@ -364,7 +364,7 @@ with tab4:
                     avg_results.loc[algo, ('Avg Time', 'std')],
                     avg_results.loc[algo, ('Avg Iterations', 'mean')],
                     avg_results.loc[algo, ('Avg Iterations', 'std')],
-                    avg_results.loc[algo, ('Success Rate', 'mean')] * 100
+                    avg_results.loc[algo, ('Success Rate', 'mean')] * 100.0
                 ]
             
             st.table(comparison_df.style.highlight_min(subset=comparison_df.columns[1:], axis=1))
