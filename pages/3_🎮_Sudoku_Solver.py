@@ -115,6 +115,7 @@ def generate_random_sudoku(difficulty='medium'):
     
     return ''.join(puzzle)
 
+@st.dialog("Show Theory", width="large")
 def show_explanation_dialog():
     st.markdown("""
     ### Why No Solution Exists
