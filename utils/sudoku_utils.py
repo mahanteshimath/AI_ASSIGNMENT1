@@ -88,54 +88,67 @@ def backtracking_with_inference(csp: SudokuCSP, inference: str = 'forward_checki
         if len(assignment) == len(csp.squares):
             return assignment
         
-        var = _select_unassigned_variable(assignment, csp)
-        for value in _order_domain_values(var, assignment, csp):
+        # Apply appropriate variable selection heuristic
+        if inference == 'mrv':
+            var = _select_mrv(assignment, csp)
+        elif inference == 'degree':
+            var = _select_mrv_degree(assignment, csp)
+        elif inference == 'lcv':
+            var = _select_mrv_degree(assignment, csp)
+            values = _order_domain_values_lcv(var, assignment, csp)
+        else:
+            var = _select_unassigned_variable(assignment, csp)
+            values = _order_domain_values(var, assignment, csp)
+        
+        # Use LCV for value ordering if specified
+        values = _order_domain_values_lcv(var, assignment, csp) if inference == 'lcv' else _order_domain_values(var, assignment, csp)
+        
+        for value in values:
             if _is_consistent(var, value, assignment, csp):
-                # Save current domains
-                saved_domains = {k: v.copy() for k, v in csp.domains.items()}
-                
-                # Make assignment and update domains
                 assignment[var] = value
-                csp.domains[var] = {value}
-                
-                if inference == 'forward_checking':
-                    failure = False
-                    for peer in csp.peers[var]:
-                        if peer not in assignment and value in csp.domains[peer]:
-                            csp.domains[peer] = csp.domains[peer] - {value}
-                            if not csp.domains[peer]:  # Domain wipeout
-                                failure = True
-                                break
-                    
-                    if not failure:
-                        result = backtrack(assignment)
-                        if result:
-                            return result
-                
-                elif inference == 'ac3':
-                    queue = [(peer, var) for peer in csp.peers[var] if peer not in assignment]
-                    failure = not _ac3(queue, csp)
-                    
-                    if not failure:
-                        result = backtrack(assignment)
-                        if result:
-                            return result
-                
-                # Restore domains and remove assignment
-                csp.domains = saved_domains
+                result = backtrack(assignment)
+                if result:
+                    return result
                 assignment.pop(var)
-                
         return None
     
     result = backtrack({})
     if result:
-        return (result, iterations)  # Return tuple of solution and iterations
-    return None  # Return None if no solution found
+        return (result, iterations)
+    return None
+
+def _select_mrv(assignment: Dict[str, int], csp: SudokuCSP) -> str:
+    """Select unassigned variable with minimum remaining values"""
+    unassigned = [var for var in csp.squares if var not in assignment]
+    return min(unassigned, key=lambda var: len(csp.domains[var]))
+
+def _select_mrv_degree(assignment: Dict[str, int], csp: SudokuCSP) -> str:
+    """Select variable using MRV with degree heuristic as tie-breaker"""
+    unassigned = [var for var in csp.squares if var not in assignment]
+    # First apply MRV
+    min_remaining = min(len(csp.domains[var]) for var in unassigned)
+    min_vars = [var for var in unassigned if len(csp.domains[var]) == min_remaining]
+    
+    if len(min_vars) == 1:
+        return min_vars[0]
+    
+    # Use degree heuristic as tie-breaker
+    return max(min_vars, key=lambda var: sum(1 for peer in csp.peers[var] if peer not in assignment))
+
+def _order_domain_values_lcv(var: str, assignment: Dict[str, int], csp: SudokuCSP) -> List[int]:
+    """Order domain values using Least Constraining Value heuristic"""
+    def count_conflicts(value):
+        count = 0
+        for peer in csp.peers[var]:
+            if peer not in assignment and value in csp.domains[peer]:
+                count += 1
+        return count
+    
+    return sorted(csp.domains[var], key=count_conflicts)
 
 def evaluate_heuristics(puzzles: List[str], runs_per_puzzle: int = 3) -> List[Dict]:
-    """Evaluate different heuristic combinations on multiple puzzles"""
+    """Evaluate different heuristic combinations"""
     results = []
-    
     heuristics = [
         ('Basic', None),
         ('MRV', 'mrv'),
@@ -154,7 +167,7 @@ def evaluate_heuristics(puzzles: List[str], runs_per_puzzle: int = 3) -> List[Di
                 csp = SudokuCSP(puzzle)
                 start = time.time()
                 if heuristic:
-                    result = backtracking_with_inference(csp, heuristic)
+                    result = backtracking_with_inference(csp, inference=heuristic)
                 else:
                     result = backtracking_search(csp)
                 total_times.append(time.time() - start)
@@ -283,8 +296,7 @@ def _revise(xi: str, xj: str, csp: SudokuCSP) -> bool:
     return revised
 
 def _select_unassigned_variable(assignment: Dict[str, int], csp: SudokuCSP) -> str:
-    """Select an unassigned variable - MRV heuristic"""
-    unassigned = [var for var in csp.squares if var not in assignment]
+    """Select an unassigned variable - MRV heuristic"""    unassigned = [var for var in csp.squares if var not in assignment]
     return min(unassigned, key=lambda var: len(csp.domains[var]))
 
 def _order_domain_values(var: str, assignment: Dict[str, int], csp: SudokuCSP) -> List[int]:
