@@ -302,17 +302,16 @@ with tab4:
     - Least Constraining Value (LCV)
     """)
     
-    # Generate some test puzzles for analysis
-    test_puzzles = [
-        "..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..",
-        "4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......",
-    ]
+    # Get current puzzle from session state
+    current_puzzle = st.session_state.sudoku_grid
+    runs = st.slider("Number of runs for analysis:", min_value=1, max_value=10, value=3)
 
     if st.button("Run Heuristics Analysis"):
         with st.spinner("Running analysis..."):
-            results = evaluate_heuristics(puzzles=test_puzzles, runs_per_puzzle=3)
+            # Use list with single puzzle but multiple runs
+            results = evaluate_heuristics(puzzles=[current_puzzle], runs_per_puzzle=runs)
             
-            # Display results as a styled dataframe
+            # Rest of the display code remains same
             st.subheader("Performance Comparison")
             df = pd.DataFrame(results)
             df = df[['Algorithm', 'Avg Time', 'Avg Iterations', 'Success Rate']]

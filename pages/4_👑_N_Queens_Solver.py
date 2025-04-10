@@ -79,7 +79,7 @@ with col1:
                             y=[i + 0.5],
                             mode='text',
                             text=['♕'],
-                            textfont=dict(size=32, color='#DAA520'),  # Changed color to dark yellow (goldenrod)
+                            textfont=dict(size=32, color='#00008B'),  # Changed color to dark blue
                             showlegend=False
                         ))
             
