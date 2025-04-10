@@ -206,11 +206,12 @@ with tab2:
             st.dataframe(styled_df, height=600)
         
         start_time = time.time()
-        solution, iterations = backtracking_search(csp)  # Modified to return iterations
+        result = backtracking_search(csp)  # Changed to single assignment
         solve_time = time.time() - start_time
         
         with col2:
-            if solution:
+            if result:
+                solution, iterations = result  # Unpack after checking result exists
                 st.write(f"Solution found in {solve_time:.6f} seconds")
                 st.write(f"Number of iterations: {iterations}")
                 styled_df = create_styled_sudoku_df(solution)
@@ -259,11 +260,12 @@ with tab3:
                     )
             
             start_time = time.time()
-            solution, iterations = backtracking_with_inference(csp, inference=inference)  # Modified to return iterations
+            result = backtracking_with_inference(csp, inference=inference)  # Changed to single assignment
             solve_time = time.time() - start_time
             
             with col2:
-                if solution:
+                if result:
+                    solution, iterations = result  # Unpack after checking result exists
                     st.write(f"Solution found in {solve_time:.6f} seconds!")
                     st.write(f"Number of iterations: {iterations}")
                     styled_df = create_styled_sudoku_df(solution)

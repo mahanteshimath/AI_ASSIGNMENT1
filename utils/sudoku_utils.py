@@ -56,17 +56,81 @@ class SudokuCSP:
                 print(line)
         print()
 
-def backtracking_search(csp: SudokuCSP) -> Optional[Dict[str, int]]:
+def backtracking_search(csp: SudokuCSP) -> Optional[Tuple[Dict[str, int], int]]:
     """Basic backtracking search"""
-    return _backtrack({}, csp)
+    iterations = 0
+    def backtrack(assignment: Dict[str, int]) -> Optional[Dict[str, int]]:
+        nonlocal iterations
+        iterations += 1
+        if len(assignment) == len(csp.squares):
+            return assignment
+        var = _select_unassigned_variable(assignment, csp)
+        for value in _order_domain_values(var, assignment, csp):
+            if _is_consistent(var, value, assignment, csp):
+                assignment[var] = value
+                result = backtrack(assignment)
+                if result:
+                    return result
+                assignment.pop(var)
+        return None
+    
+    result = backtrack({})
+    if result:
+        return (result, iterations)  # Return tuple of solution and iterations
+    return None  # Return None if no solution found
 
-def backtracking_with_inference(csp: SudokuCSP, inference: str = 'forward_checking') -> Optional[Dict[str, int]]:
+def backtracking_with_inference(csp: SudokuCSP, inference: str = 'forward_checking') -> Optional[Tuple[Dict[str, int], int]]:
     """Backtracking search with inference"""
-    if inference == 'forward_checking':
-        return _backtrack_fc({}, csp)
-    elif inference == 'ac3':
-        return _backtrack_ac3({}, csp)
-    return None
+    iterations = 0
+    def backtrack(assignment: Dict[str, int]) -> Optional[Dict[str, int]]:
+        nonlocal iterations
+        iterations += 1
+        if len(assignment) == len(csp.squares):
+            return assignment
+        
+        var = _select_unassigned_variable(assignment, csp)
+        for value in _order_domain_values(var, assignment, csp):
+            if _is_consistent(var, value, assignment, csp):
+                # Save current domains
+                saved_domains = {k: v.copy() for k, v in csp.domains.items()}
+                
+                # Make assignment and update domains
+                assignment[var] = value
+                csp.domains[var] = {value}
+                
+                if inference == 'forward_checking':
+                    failure = False
+                    for peer in csp.peers[var]:
+                        if peer not in assignment and value in csp.domains[peer]:
+                            csp.domains[peer] = csp.domains[peer] - {value}
+                            if not csp.domains[peer]:  # Domain wipeout
+                                failure = True
+                                break
+                    
+                    if not failure:
+                        result = backtrack(assignment)
+                        if result:
+                            return result
+                
+                elif inference == 'ac3':
+                    queue = [(peer, var) for peer in csp.peers[var] if peer not in assignment]
+                    failure = not _ac3(queue, csp)
+                    
+                    if not failure:
+                        result = backtrack(assignment)
+                        if result:
+                            return result
+                
+                # Restore domains and remove assignment
+                csp.domains = saved_domains
+                assignment.pop(var)
+                
+        return None
+    
+    result = backtrack({})
+    if result:
+        return (result, iterations)  # Return tuple of solution and iterations
+    return None  # Return None if no solution found
 
 def evaluate_heuristics(num_puzzles: int = 2, runs_per_puzzle: int = 3) -> List[Dict]:
     """Evaluate different heuristic combinations"""
