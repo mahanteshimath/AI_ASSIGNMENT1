@@ -304,8 +304,8 @@ with tab4:
     
     # Get current puzzle from session state
     current_puzzle = st.session_state.sudoku_grid
-    runs = st.slider("Number of runs for analysis:", min_value=1, max_value=10, value=3)
-
+    runs = st.slider("Number of runs for analysis:", min_value=1, max_value=100, value=3)
+    st.divider()
     if st.button("Run Heuristics Analysis"):
         with st.spinner("Running analysis..."):
             # Use list with single puzzle but multiple runs
@@ -316,13 +316,13 @@ with tab4:
             df = pd.DataFrame(results)
             df = df[['Algorithm', 'Avg Time', 'Avg Iterations', 'Success Rate']]
             st.dataframe(df.style.highlight_min(subset=['Avg Time', 'Avg Iterations']))
-            
+            st.divider()
             # Plot comparison
             st.subheader("Visual Comparison")
             chart_data = pd.DataFrame(results)
             st.line_chart(chart_data.set_index('Algorithm')['Avg Time'])
             
-            # Analysis summary
+            st.divider()
             st.subheader("Key Findings")
             st.markdown("""
             1. **MRV (Minimum Remaining Values)**
