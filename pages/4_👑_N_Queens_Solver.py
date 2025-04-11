@@ -70,67 +70,47 @@ with st.sidebar:
 # Main content
 col1, col2 = st.columns(2)
 
-if st.button("Solve"):
-    solver = NQueensSolver(n=n_queens)
-    
-    with st.spinner("Solving..."):
-        if algorithm == "Simulated Annealing":
-            result = solver.simulated_annealing(
-                initial_temp=initial_temp,
-                cooling_rate=cooling_rate
-            )
-        else:
-            result = solver.hill_climbing()
+# Create button container for disable functionality
+button_container = st.container()
+with button_container:
+    if st.button("Generate New Board and Solve", key="solve_button"):
+        # Disable button during solving
+        st.session_state.solving = True
+        button_container.empty()  # Clear the enabled button
+        # Show disabled button
+        st.button("Generating Solution...", disabled=True)
         
-        # Display results
-        st.write(f"Solution found in {result['time']:.4f} seconds")
-        st.write(f"Iterations: {result['iterations']}")
-        st.write(f"Final conflicts: {result['conflicts']}")
+        solver = NQueensSolver(n=n_queens)
         
-        # Display boards side by side
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Initial Board")
-            fig_initial = create_board_figure(result['initial_board'], n_queens)
-            st.plotly_chart(fig_initial)
+        with st.spinner("Generating new board and solving..."):
+            if algorithm == "Simulated Annealing":
+                result = solver.simulated_annealing(
+                    initial_temp=initial_temp,
+                    cooling_rate=cooling_rate
+                )
+            else:
+                result = solver.hill_climbing()
             
-        with col2:
-            st.subheader("Final Board")
-            fig_final = create_board_figure(result['solution'], n_queens)
-            st.plotly_chart(fig_final)
-        
-        # Algorithm Analysis
-        st.subheader("Algorithm Analysis")
-        
-        # Show temperature vs energy plot for SA
-        if algorithm == "Simulated Annealing":
-            st.write("Temperature and Energy History")
-            fig = go.Figure()
+            # Display results
+            st.write(f"Solution found in {result['time']:.4f} seconds")
+            st.write(f"Iterations: {result['iterations']}")
+            st.write(f"Final conflicts: {result['conflicts']}")
             
-            # Add temperature line
-            fig.add_trace(go.Scatter(
-                y=solver.temperature_history,
-                name='Temperature',
-                line=dict(color='red')
-            ))
+            # Display boards side by side
+            col1, col2 = st.columns(2)
             
-            # Add energy line
-            fig.add_trace(go.Scatter(
-                y=solver.energy_history,
-                name='Conflicts',
-                line=dict(color='blue')
-            ))
-            
-            fig.update_layout(
-                title='Temperature and Conflicts vs. Iterations',
-                xaxis_title='Iterations',
-                yaxis_title='Value',
-                width=800,
-                height=400
-            )
-            
-            st.plotly_chart(fig)
+            with col1:
+                st.subheader("Initial Board")
+                fig_initial = create_board_figure(result['initial_board'], n_queens)
+                st.plotly_chart(fig_initial)
+                
+            with col2:
+                st.subheader("Final Board")
+                fig_final = create_board_figure(result['solution'], n_queens)
+                st.plotly_chart(fig_final)
+
+        # Re-enable button after solving
+        st.session_state.solving = False
 
 # Show theory
 with st.expander("Algorithm Details"):
