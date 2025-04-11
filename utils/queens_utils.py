@@ -49,22 +49,22 @@ class NQueensSolver:
         row = random.randint(0, self.n-1)
         old_col = np.where(self.board[row] == 1)[0][0]
         
-        # Try moving queen to a new position in the same row
-        new_col = random.randint(0, self.n-1)
-        while new_col == old_col:
-            new_col = random.randint(0, self.n-1)
+        # Store the current state
+        old_board = self.board.copy()
+        old_conflicts = self.count_conflicts()
+        
+        # Try all possible positions in the row
+        possible_cols = list(range(self.n))
+        possible_cols.remove(old_col)
+        new_col = random.choice(possible_cols)
         
         # Make the move
-        new_board = self.board.copy()
-        new_board[row][old_col] = 0
-        new_board[row][new_col] = 1
-        
-        # Calculate new conflicts
-        self.board = new_board
+        self.board[row][old_col] = 0
+        self.board[row][new_col] = 1
         new_conflicts = self.count_conflicts()
         
-        return new_board, new_conflicts
-    
+        return old_board, old_conflicts, self.board.copy(), new_conflicts
+
     def simulated_annealing(self, initial_temp=10.0, cooling_rate=0.95, min_temp=0.01, max_iterations=10000):
         """Solve N-Queens using simulated annealing with improved visualization"""
         self.initialize_random_state()
@@ -84,17 +84,22 @@ class NQueensSolver:
         start_time = time()
         
         while temperature > min_temp and current_conflicts > 0 and iteration < max_iterations:
-            new_board, new_conflicts = self.make_random_move()
+            old_board, old_conflicts, new_board, new_conflicts = self.make_random_move()
             
             delta_e = new_conflicts - current_conflicts
             
-            if delta_e < 0 or random.random() < math.exp(-delta_e / temperature):
+            # Improved acceptance probability calculation
+            if delta_e < 0 or (temperature > 0 and random.random() < math.exp(-delta_e / temperature)):
                 current_board = new_board.copy()
                 current_conflicts = new_conflicts
                 
                 if current_conflicts < best_conflicts:
                     best_board = current_board.copy()
                     best_conflicts = current_conflicts
+            else:
+                # Restore old state if move rejected
+                self.board = old_board.copy()
+                current_conflicts = old_conflicts
             
             temperature *= cooling_rate
             iteration += 1
@@ -105,6 +110,7 @@ class NQueensSolver:
             if current_conflicts == 0:
                 break
         
+        self.board = best_board
         return {
             "solution": best_board,
             "conflicts": best_conflicts,
@@ -114,7 +120,7 @@ class NQueensSolver:
         }
     
     def hill_climbing(self, max_iterations=10000):
-        """Hill climbing implementation (SA with T=0)"""
+        """Hill climbing implementation"""
         self.initialize_random_state()
         
         current_board = self.board.copy()
@@ -127,17 +133,23 @@ class NQueensSolver:
         self.energy_history = [current_conflicts]
         
         start_time = time()
+        no_improvement_count = 0
         
-        while current_conflicts > 0 and iteration < max_iterations:
-            new_board, new_conflicts = self.make_random_move()
+        while current_conflicts > 0 and iteration < max_iterations and no_improvement_count < self.n * 2:
+            old_board, old_conflicts, new_board, new_conflicts = self.make_random_move()
             
-            if new_conflicts <= current_conflicts:
+            if new_conflicts < current_conflicts:  # Only accept strictly better moves
                 current_board = new_board.copy()
                 current_conflicts = new_conflicts
+                no_improvement_count = 0
                 
                 if current_conflicts < best_conflicts:
                     best_board = current_board.copy()
                     best_conflicts = current_conflicts
+            else:
+                # Restore old state
+                self.board = old_board.copy()
+                no_improvement_count += 1
             
             iteration += 1
             self.energy_history.append(current_conflicts)
@@ -145,6 +157,7 @@ class NQueensSolver:
             if current_conflicts == 0:
                 break
         
+        self.board = best_board
         return {
             "solution": best_board,
             "conflicts": best_conflicts,
