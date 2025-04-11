@@ -65,103 +65,142 @@ class NQueensSolver:
         
         return old_board, old_conflicts, self.board.copy(), new_conflicts
 
-    def simulated_annealing(self, initial_temp=10.0, cooling_rate=0.95, min_temp=0.01, max_iterations=10000):
-        """Solve N-Queens using simulated annealing with improved visualization"""
-        self.initialize_random_state()
+    def get_all_neighbors(self):
+        """Get all possible neighbor states by moving each queen"""
+        neighbors = []
+        conflicts = []
         
-        current_board = self.board.copy()
-        current_conflicts = self.current_conflicts
-        
-        best_board = current_board.copy()
-        best_conflicts = current_conflicts
-        
-        temperature = initial_temp
-        iteration = 0
-        
-        self.temperature_history = [temperature]
-        self.energy_history = [current_conflicts]
-        
-        start_time = time()
-        
-        while temperature > min_temp and current_conflicts > 0 and iteration < max_iterations:
-            old_board, old_conflicts, new_board, new_conflicts = self.make_random_move()
+        for row in range(self.n):
+            old_col = np.where(self.board[row] == 1)[0][0]
+            for new_col in range(self.n):
+                if new_col != old_col:
+                    new_board = self.board.copy()
+                    new_board[row][old_col] = 0
+                    new_board[row][new_col] = 1
+                    self.board = new_board
+                    neighbors.append(new_board.copy())
+                    conflicts.append(self.count_conflicts())
+            # Restore original position
+            self.board[row][old_col] = 1
+            self.board[row, :old_col] = 0
+            self.board[row, old_col+1:] = 0
             
-            delta_e = new_conflicts - current_conflicts
+        return neighbors, conflicts
+
+    def simulated_annealing(self, initial_temp=100.0, cooling_rate=0.99, min_temp=0.0001, max_iterations=50000):
+        """Enhanced simulated annealing with multiple restarts"""
+        best_solution = None
+        best_conflicts = float('inf')
+        restart_count = 0
+        max_restarts = 5
+        
+        while restart_count < max_restarts and best_conflicts > 0:
+            self.initialize_random_state()
+            current_board = self.board.copy()
+            current_conflicts = self.current_conflicts
             
-            # Improved acceptance probability calculation
-            if delta_e < 0 or (temperature > 0 and random.random() < math.exp(-delta_e / temperature)):
-                current_board = new_board.copy()
-                current_conflicts = new_conflicts
+            temperature = initial_temp
+            iteration = 0
+            
+            self.temperature_history = [temperature]
+            self.energy_history = [current_conflicts]
+            
+            while temperature > min_temp and current_conflicts > 0 and iteration < max_iterations:
+                neighbors, neighbor_conflicts = self.get_all_neighbors()
                 
-                if current_conflicts < best_conflicts:
-                    best_board = current_board.copy()
-                    best_conflicts = current_conflicts
-            else:
-                # Restore old state if move rejected
-                self.board = old_board.copy()
-                current_conflicts = old_conflicts
+                # Try all possible moves at current temperature
+                for new_board, new_conflicts in zip(neighbors, neighbor_conflicts):
+                    delta_e = new_conflicts - current_conflicts
+                    
+                    if delta_e < 0 or (temperature > 0 and random.random() < math.exp(-delta_e / temperature)):
+                        current_board = new_board.copy()
+                        current_conflicts = new_conflicts
+                        self.board = new_board.copy()
+                        
+                        if current_conflicts < best_conflicts:
+                            best_solution = current_board.copy()
+                            best_conflicts = current_conflicts
+                            
+                        if current_conflicts == 0:
+                            break
+                
+                temperature *= cooling_rate
+                iteration += 1
+                
+                self.temperature_history.append(temperature)
+                self.energy_history.append(current_conflicts)
+                
+                if current_conflicts == 0:
+                    break
             
-            temperature *= cooling_rate
-            iteration += 1
+            restart_count += 1
             
-            self.temperature_history.append(temperature)
-            self.energy_history.append(current_conflicts)
-            
-            if current_conflicts == 0:
-                break
-        
-        self.board = best_board
+        self.board = best_solution if best_solution is not None else self.board
         return {
-            "solution": best_board,
+            "solution": self.board,
             "conflicts": best_conflicts,
             "iterations": iteration,
             "time": time() - start_time,
-            "solved": best_conflicts == 0
+            "solved": best_conflicts == 0,
+            "restarts": restart_count
         }
     
-    def hill_climbing(self, max_iterations=10000):
-        """Hill climbing implementation"""
-        self.initialize_random_state()
+    def hill_climbing(self, max_iterations=50000):
+        """Enhanced hill climbing with sideways moves and random restarts"""
+        best_solution = None
+        best_conflicts = float('inf')
+        restart_count = 0
+        max_restarts = 10
+        max_sideways = self.n * 2
         
-        current_board = self.board.copy()
-        current_conflicts = self.current_conflicts
-        
-        best_board = current_board.copy()
-        best_conflicts = current_conflicts
-        
-        iteration = 0
-        self.energy_history = [current_conflicts]
-        
-        start_time = time()
-        no_improvement_count = 0
-        
-        while current_conflicts > 0 and iteration < max_iterations and no_improvement_count < self.n * 2:
-            old_board, old_conflicts, new_board, new_conflicts = self.make_random_move()
+        while restart_count < max_restarts and best_conflicts > 0:
+            self.initialize_random_state()
+            current_board = self.board.copy()
+            current_conflicts = self.current_conflicts
             
-            if new_conflicts < current_conflicts:  # Only accept strictly better moves
-                current_board = new_board.copy()
-                current_conflicts = new_conflicts
-                no_improvement_count = 0
+            iteration = 0
+            sideways_moves = 0
+            
+            self.energy_history = [current_conflicts]
+            
+            while iteration < max_iterations and current_conflicts > 0:
+                neighbors, neighbor_conflicts = self.get_all_neighbors()
+                min_conflict = min(neighbor_conflicts)
+                
+                if min_conflict < current_conflicts:
+                    # Accept better move
+                    best_idx = neighbor_conflicts.index(min_conflict)
+                    current_board = neighbors[best_idx].copy()
+                    current_conflicts = min_conflict
+                    self.board = current_board.copy()
+                    sideways_moves = 0
+                elif min_conflict == current_conflicts and sideways_moves < max_sideways:
+                    # Accept sideways move
+                    equal_indices = [i for i, c in enumerate(neighbor_conflicts) if c == current_conflicts]
+                    best_idx = random.choice(equal_indices)
+                    current_board = neighbors[best_idx].copy()
+                    sideways_moves += 1
+                else:
+                    break
                 
                 if current_conflicts < best_conflicts:
-                    best_board = current_board.copy()
+                    best_solution = current_board.copy()
                     best_conflicts = current_conflicts
-            else:
-                # Restore old state
-                self.board = old_board.copy()
-                no_improvement_count += 1
+                
+                iteration += 1
+                self.energy_history.append(current_conflicts)
+                
+                if current_conflicts == 0:
+                    break
             
-            iteration += 1
-            self.energy_history.append(current_conflicts)
-            
-            if current_conflicts == 0:
-                break
+            restart_count += 1
         
-        self.board = best_board
+        self.board = best_solution if best_solution is not None else self.board
         return {
-            "solution": best_board,
+            "solution": self.board,
             "conflicts": best_conflicts,
             "iterations": iteration,
             "time": time() - start_time,
-            "solved": best_conflicts == 0
+            "solved": best_conflicts == 0,
+            "restarts": restart_count
         }
