@@ -142,7 +142,7 @@ if st.button("Generate New Board and Solve"):
         # Add Algorithm Analysis section
         st.subheader("Algorithm Analysis")
         
-        # Show temperature vs energy plot for SA
+        # Show analysis plots based on algorithm
         if algorithm == "Simulated Annealing":
             st.write("Temperature and Energy History")
             fig = go.Figure()
@@ -165,6 +165,26 @@ if st.button("Generate New Board and Solve"):
                 title='Temperature and Conflicts vs. Iterations',
                 xaxis_title='Iterations',
                 yaxis_title='Value',
+                width=800,
+                height=400
+            )
+            
+            st.plotly_chart(fig)
+        else:  # Hill Climbing
+            st.write("Conflicts History")
+            fig = go.Figure()
+            
+            # Add conflicts line for HC
+            fig.add_trace(go.Scatter(
+                y=solver.energy_history,
+                name='Conflicts',
+                line=dict(color='blue')
+            ))
+            
+            fig.update_layout(
+                title='Conflicts vs. Iterations',
+                xaxis_title='Iterations',
+                yaxis_title='Number of Conflicts',
                 width=800,
                 height=400
             )
