@@ -87,47 +87,68 @@ class NQueensSolver:
             
         return neighbors, conflicts
 
-    def simulated_annealing(self, initial_temp=100.0, cooling_rate=0.99, min_temp=0.0001, max_iterations=50000):
-        """Enhanced simulated annealing with multiple restarts"""
-        start_time = time()  # Add this line at the start
+    def simulated_annealing(self, initial_temp=100.0, cooling_rate=0.99, min_temp=0.0001, max_iterations=100000):
+        """Enhanced simulated annealing with aggressive restarts"""
+        start_time = time()
         best_solution = None
         best_conflicts = float('inf')
         restart_count = 0
-        max_restarts = 5
+        max_restarts = 20  # Increased max restarts
+        plateau_count = 0
+        max_plateau = 1000  # Maximum iterations without improvement
         
-        while restart_count < max_restarts and best_conflicts > 0:
+        while (restart_count < max_restarts and best_conflicts > 0):
             self.initialize_random_state()
             current_board = self.board.copy()
             current_conflicts = self.current_conflicts
             
             temperature = initial_temp
             iteration = 0
+            last_conflicts = current_conflicts
+            plateau_count = 0
             
             self.temperature_history = [temperature]
             self.energy_history = [current_conflicts]
             
-            while temperature > min_temp and current_conflicts > 0 and iteration < max_iterations:
+            while current_conflicts > 0 and iteration < max_iterations:
                 neighbors, neighbor_conflicts = self.get_all_neighbors()
                 
                 # Try all possible moves at current temperature
+                improvement_found = False
                 for new_board, new_conflicts in zip(neighbors, neighbor_conflicts):
                     delta_e = new_conflicts - current_conflicts
                     
-                    if delta_e < 0 or (temperature > 0 and random.random() < math.exp(-delta_e / temperature)):
+                    # More aggressive acceptance probability
+                    if delta_e < 0 or (temperature > 0 and random.random() < math.exp(-delta_e / (temperature + 0.01))):
                         current_board = new_board.copy()
                         current_conflicts = new_conflicts
                         self.board = new_board.copy()
+                        improvement_found = True
                         
                         if current_conflicts < best_conflicts:
                             best_solution = current_board.copy()
                             best_conflicts = current_conflicts
-                            
+                            plateau_count = 0
+                        
                         if current_conflicts == 0:
                             break
                 
-                temperature *= cooling_rate
-                iteration += 1
+                if not improvement_found:
+                    plateau_count += 1
                 
+                # Restart if stuck on plateau
+                if plateau_count >= max_plateau:
+                    temperature = initial_temp  # Reset temperature
+                    plateau_count = 0
+                    self.initialize_random_state()
+                    current_board = self.board.copy()
+                    current_conflicts = self.current_conflicts
+                
+                temperature *= cooling_rate
+                if temperature < min_temp:
+                    temperature = initial_temp * 0.5  # Reset with lower temperature
+                
+                iteration += 1
                 self.temperature_history.append(temperature)
                 self.energy_history.append(current_conflicts)
                 
@@ -135,7 +156,7 @@ class NQueensSolver:
                     break
             
             restart_count += 1
-            
+        
         self.board = best_solution if best_solution is not None else self.board
         return {
             "solution": self.board,
@@ -146,14 +167,16 @@ class NQueensSolver:
             "restarts": restart_count
         }
     
-    def hill_climbing(self, max_iterations=50000):
-        """Enhanced hill climbing with sideways moves and random restarts"""
-        start_time = time()  # Add this line at the start
+    def hill_climbing(self, max_iterations=100000):
+        """Enhanced hill climbing with aggressive sideways moves"""
+        start_time = time()
         best_solution = None
         best_conflicts = float('inf')
         restart_count = 0
-        max_restarts = 10
-        max_sideways = self.n * 2
+        max_restarts = 30  # Increased max restarts
+        max_sideways = self.n * 4  # Increased sideways moves
+        plateau_count = 0
+        max_plateau = 1000
         
         while restart_count < max_restarts and best_conflicts > 0:
             self.initialize_random_state()
@@ -162,6 +185,7 @@ class NQueensSolver:
             
             iteration = 0
             sideways_moves = 0
+            plateau_count = 0
             
             self.energy_history = [current_conflicts]
             
@@ -170,24 +194,29 @@ class NQueensSolver:
                 min_conflict = min(neighbor_conflicts)
                 
                 if min_conflict < current_conflicts:
-                    # Accept better move
                     best_idx = neighbor_conflicts.index(min_conflict)
                     current_board = neighbors[best_idx].copy()
                     current_conflicts = min_conflict
                     self.board = current_board.copy()
                     sideways_moves = 0
+                    plateau_count = 0
+                    
+                    if current_conflicts < best_conflicts:
+                        best_solution = current_board.copy()
+                        best_conflicts = current_conflicts
+                
                 elif min_conflict == current_conflicts and sideways_moves < max_sideways:
-                    # Accept sideways move
                     equal_indices = [i for i, c in enumerate(neighbor_conflicts) if c == current_conflicts]
                     best_idx = random.choice(equal_indices)
                     current_board = neighbors[best_idx].copy()
                     sideways_moves += 1
+                    plateau_count += 1
                 else:
-                    break
+                    plateau_count += 1
                 
-                if current_conflicts < best_conflicts:
-                    best_solution = current_board.copy()
-                    best_conflicts = current_conflicts
+                # Restart if stuck on plateau
+                if plateau_count >= max_plateau:
+                    break  # Force restart
                 
                 iteration += 1
                 self.energy_history.append(current_conflicts)
