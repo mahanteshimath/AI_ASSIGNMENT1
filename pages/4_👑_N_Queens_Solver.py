@@ -53,44 +53,56 @@ with col1:
             st.write(f"Iterations: {result['iterations']}")
             st.write(f"Final conflicts: {result['conflicts']}")
             
-            # Visualize board
-            board = result['solution']
-            fig = go.Figure()
+            # Create two columns for initial and final boards
+            board_col1, board_col2 = st.columns(2)
             
-            # Add chess board pattern
-            for i in range(n_queens):
-                for j in range(n_queens):
-                    color = '#B58863' if (i + j) % 2 == 0 else '#F0D9B5'
-                    fig.add_trace(go.Scatter(
-                        x=[j, j+1, j+1, j, j],
-                        y=[i, i, i+1, i+1, i],
-                        fill="toself",
-                        fillcolor=color,
-                        line=dict(color='rgba(0,0,0,0)'),
-                        showlegend=False
-                    ))
-            
-            # Add queens
-            for i in range(n_queens):
-                for j in range(n_queens):
-                    if board[i][j] == 1:
-                        fig.add_trace(go.Scatter(
-                            x=[j + 0.5],
-                            y=[i + 0.5],
-                            mode='text',
-                            text=['♕'],
-                            textfont=dict(size=32, color='#00008B'),  # Changed color to dark blue
-                            showlegend=False
-                        ))
-            
-            fig.update_layout(
-                width=400, height=400,
-                showlegend=False,
-                xaxis=dict(range=[0, n_queens], showgrid=False, zeroline=False, visible=False),
-                yaxis=dict(range=[0, n_queens], showgrid=False, zeroline=False, visible=False)
-            )
-            
-            st.plotly_chart(fig)
+            with board_col1:
+                st.subheader("Initial Board")
+                fig_initial = create_board_figure(result['initial_board'], n_queens)
+                st.plotly_chart(fig_initial)
+                
+            with board_col2:
+                st.subheader("Final Board")
+                fig_final = create_board_figure(result['solution'], n_queens)
+                st.plotly_chart(fig_final)
+
+def create_board_figure(board, n_queens):
+    fig = go.Figure()
+    
+    # Add chess board pattern
+    for i in range(n_queens):
+        for j in range(n_queens):
+            color = '#B58863' if (i + j) % 2 == 0 else '#F0D9B5'
+            fig.add_trace(go.Scatter(
+                x=[j, j+1, j+1, j, j],
+                y=[i, i, i+1, i+1, i],
+                fill="toself",
+                fillcolor=color,
+                line=dict(color='rgba(0,0,0,0)'),
+                showlegend=False
+            ))
+    
+    # Add queens
+    for i in range(n_queens):
+        for j in range(n_queens):
+            if board[i][j] == 1:
+                fig.add_trace(go.Scatter(
+                    x=[j + 0.5],
+                    y=[i + 0.5],
+                    mode='text',
+                    text=['♕'],
+                    textfont=dict(size=32, color='#00008B'),
+                    showlegend=False
+                ))
+    
+    fig.update_layout(
+        width=400, height=400,
+        showlegend=False,
+        xaxis=dict(range=[0, n_queens], showgrid=False, zeroline=False, visible=False),
+        yaxis=dict(range=[0, n_queens], showgrid=False, zeroline=False, visible=False)
+    )
+    
+    return fig
 
 with col2:
     st.subheader("Algorithm Analysis")

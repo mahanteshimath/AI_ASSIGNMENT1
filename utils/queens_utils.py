@@ -8,6 +8,15 @@ class NQueensSolver:
         self.n = n
         self.temperature_history = []
         self.energy_history = []
+        self.initial_state = None
+        self.final_state = None
+        
+        # Default parameters
+        self.INIT_TEMP = 1000
+        self.COOLING_RATE = 0.99
+        self.MIN_TEMP = 0.1
+        self.MAX_ITER = 10000
+        self.RECORD_HISTORY = True
 
     def _random_state(self):
         state = list(range(self.n))
@@ -34,9 +43,17 @@ class NQueensSolver:
             board[row][col] = 1
         return board
 
-    def simulated_annealing(self, initial_temp=10.0, cooling_rate=0.95, min_temp=0.1, max_iter=10000):
+    def simulated_annealing(self, initial_temp=None, cooling_rate=None, min_temp=None, max_iter=None):
         start_time = time.time()
+        
+        # Use default values if not provided
+        initial_temp = initial_temp or self.INIT_TEMP
+        cooling_rate = cooling_rate or self.COOLING_RATE
+        min_temp = min_temp or self.MIN_TEMP
+        max_iter = max_iter or self.MAX_ITER
+        
         current_state = self._random_state()
+        self.initial_state = self._state_to_board(current_state)
         current_cost = self._count_conflicts(current_state)
         
         T = initial_temp
@@ -62,16 +79,21 @@ class NQueensSolver:
             if T < min_temp:
                 break
         
+        self.final_state = self._state_to_board(current_state)
         return {
-            'solution': self._state_to_board(current_state),
+            'solution': self.final_state,
+            'initial_board': self.initial_state,
             'conflicts': current_cost,
             'iterations': iteration,
             'time': time.time() - start_time
         }
 
-    def hill_climbing(self, max_iter=10000):
+    def hill_climbing(self, max_iter=None):
         start_time = time.time()
+        max_iter = max_iter or self.MAX_ITER
+        
         current_state = self._random_state()
+        self.initial_state = self._state_to_board(current_state)
         current_cost = self._count_conflicts(current_state)
         
         iteration = 0
@@ -89,8 +111,10 @@ class NQueensSolver:
             
             iteration += 1
         
+        self.final_state = self._state_to_board(current_state)
         return {
-            'solution': self._state_to_board(current_state),
+            'solution': self.final_state,
+            'initial_board': self.initial_state,
             'conflicts': current_cost,
             'iterations': iteration,
             'time': time.time() - start_time
