@@ -139,6 +139,38 @@ if st.button("Generate New Board and Solve"):
             fig_final = create_board_figure(result['solution'], n_queens)
             st.plotly_chart(fig_final)
 
+        # Add Algorithm Analysis section
+        st.subheader("Algorithm Analysis")
+        
+        # Show temperature vs energy plot for SA
+        if algorithm == "Simulated Annealing":
+            st.write("Temperature and Energy History")
+            fig = go.Figure()
+            
+            # Add temperature line
+            fig.add_trace(go.Scatter(
+                y=solver.temperature_history,
+                name='Temperature',
+                line=dict(color='red')
+            ))
+            
+            # Add energy line
+            fig.add_trace(go.Scatter(
+                y=solver.energy_history,
+                name='Conflicts',
+                line=dict(color='blue')
+            ))
+            
+            fig.update_layout(
+                title='Temperature and Conflicts vs. Iterations',
+                xaxis_title='Iterations',
+                yaxis_title='Value',
+                width=800,
+                height=400
+            )
+            
+            st.plotly_chart(fig)
+
 footer="""<style>
 .footer {
 position: fixed;
