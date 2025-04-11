@@ -45,11 +45,6 @@ def create_board_figure(board, n_queens):
     return fig
 
 st.set_page_config(page_title="N-Queens Solver", page_icon="👑", layout="wide")
-st.image(
-    "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",
-    width=100
-)
-st.markdown("[By MAHANTESH HIREMATH](https://www.linkedin.com/in/mahantesh-hiremath/)")
 
 st.title("N-Queens Problem Solver")
 st.markdown("""
