@@ -174,22 +174,62 @@ if st.button("Generate New Board and Solve"):
             st.write("Conflicts History")
             fig = go.Figure()
             
-            # Add conflicts line for HC
+            # Create x-axis points for iterations
+            iterations = list(range(len(solver.energy_history)))
+            
+            # Add conflicts line for HC with improved visualization
             fig.add_trace(go.Scatter(
+                x=iterations,
                 y=solver.energy_history,
                 name='Conflicts',
-                line=dict(color='blue')
+                line=dict(color='blue', width=2),
+                mode='lines+markers',  # Add markers to see actual data points
+                marker=dict(size=6)
             ))
             
             fig.update_layout(
-                title='Conflicts vs. Iterations',
-                xaxis_title='Iterations',
-                yaxis_title='Number of Conflicts',
+                title={
+                    'text': 'Conflicts vs. Iterations (Hill Climbing)',
+                    'y': 0.95,
+                    'x': 0.5,
+                    'xanchor': 'center',
+                    'yanchor': 'top'
+                },
+                xaxis_title="Iterations",
+                yaxis_title="Number of Conflicts",
                 width=800,
-                height=400
+                height=400,
+                showlegend=True,
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01
+                ),
+                hovermode='x unified'  # Show all values for a given x coordinate
             )
             
+            # Add gridlines and improve appearance
+            fig.update_xaxes(gridcolor='lightgrey', gridwidth=0.5)
+            fig.update_yaxes(gridcolor='lightgrey', gridwidth=0.5)
+            
             st.plotly_chart(fig)
+            
+            # Add analysis summary
+            if len(solver.energy_history) > 1:
+                initial_conflicts = solver.energy_history[0]
+                final_conflicts = solver.energy_history[-1]
+                improvement = ((initial_conflicts - final_conflicts) / initial_conflicts * 100 
+                             if initial_conflicts > 0 else 0)
+                
+                st.write("### Analysis Summary")
+                st.write(f"- Initial conflicts: {initial_conflicts}")
+                st.write(f"- Final conflicts: {final_conflicts}")
+                st.write(f"- Improvement: {improvement:.2f}%")
+                st.write("- Hill Climbing behavior shows:", [
+                    "Rapid initial improvement" if improvement > 50 else "Gradual improvement",
+                    "Got stuck in local minimum" if final_conflicts > 0 else "Found optimal solution"
+                ])
 
 footer="""<style>
 .footer {
