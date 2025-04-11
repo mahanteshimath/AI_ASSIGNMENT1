@@ -89,6 +89,7 @@ class NQueensSolver:
 
     def simulated_annealing(self, initial_temp=100.0, cooling_rate=0.99, min_temp=0.0001, max_iterations=50000):
         """Enhanced simulated annealing with multiple restarts"""
+        start_time = time()  # Add this line at the start
         best_solution = None
         best_conflicts = float('inf')
         restart_count = 0
@@ -147,6 +148,7 @@ class NQueensSolver:
     
     def hill_climbing(self, max_iterations=50000):
         """Enhanced hill climbing with sideways moves and random restarts"""
+        start_time = time()  # Add this line at the start
         best_solution = None
         best_conflicts = float('inf')
         restart_count = 0
