@@ -1,4 +1,4 @@
-# AI Assignment 1 - IITJ
+# AI Assignment 1 and 2 - IITJ
 
 # Click bellow to start running code 
 
